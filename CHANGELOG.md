@@ -8,14 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Initial project prototype for "GovJobs".
-- Multi-source job scraper using Playwright (City of Toronto, TTC, Waterfront Toronto).
-- Local SQLite database and Express API server.
-- High-density React dashboard with Jobs and Companies list views.
-- Dedicated full-page job details view with structured panels (Responsibilities, Qualifications).
-- Advanced metadata extraction for Salary, Vacancies, Work Mode, and Future Requirements.
-- Source-based filtering and full-text search.
-- Direct apply links integrated into the jobs list.
+- Premium UI redesign inspired by JustShipped.Dev:
+  - Clean monochrome aesthetic with bold, high-contrast typography.
+  - Centered 800px readable layout with generous vertical spacing.
+  - Interactive job rows with hover-opacity effects.
+- Enhanced data normalization for job metadata:
+  - Numeric-only extraction for "Number of Vacancies".
+  - Human-friendly "Work Mode" labels (In-person, Hybrid, Remote).
+  - Cleaned salary strings (removed "Information:" and trailing junk).
+- Integrated Source filtering with improved minimal UI.
+
+### Changed
+- Removed all-caps styling from entire application (headers, badges, labels).
+- Refactored job details page with streamlined metadata panels and focused typography.
+- Improved header navigation for "Jobs" and "Companies" views.
 
 ### Changed
 - Refactored all grid/card layouts into high-density horizontal lists.

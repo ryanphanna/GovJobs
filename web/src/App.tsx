@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Search, MapPin, Building, Calendar, ExternalLink, Briefcase, LayoutGrid, Building2, ChevronRight, DollarSign, Clock, ArrowLeft, Users, Zap, Globe, Filter, ListChecks, Target, Info } from 'lucide-react';
+import { Search, MapPin, Building, Calendar, ExternalLink, Briefcase, LayoutGrid, Building2, ChevronRight, DollarSign, Clock, ArrowLeft, Users, Zap, Globe, Filter } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -29,47 +29,34 @@ const JobRow = ({ job, onClick }: { job: Job, onClick: () => void }) => (
   <div 
     onClick={onClick}
     style={{ 
-      padding: '0.5rem 1.5rem',
+      padding: '0.75rem 0',
       backgroundColor: 'white',
-      borderBottom: '1px solid #f1f5f9',
+      borderBottom: '1px solid #f8fafc',
       cursor: 'pointer',
-      transition: 'all 0.1s ease',
+      transition: 'opacity 0.1s ease',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
       gap: '2rem'
     }}
-    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
+    onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
+    onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
   >
     <div style={{ minWidth: 0, flex: 1 }}>
-      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.2rem' }}>{job.job_title}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.65rem', color: '#64748b', fontWeight: 600 }}>
-        <span style={{ color: '#3b82f6', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.025em' }}>{job.source}</span>
-        {job.department && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Building size={10} /> {job.department}</span>}
-        {job.location && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><MapPin size={10} /> {job.location}</span>}
+      <div style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.15rem' }}>{job.job_title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8125rem', color: '#64748b' }}>
+        <span style={{ color: '#0f172a', fontWeight: 600 }}>{job.source}</span>
+        {job.department && <span>{job.department}</span>}
       </div>
     </div>
     
-    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexShrink: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexShrink: 0 }}>
       {job.closing_date && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-          <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>Deadline</span>
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444' }}>{job.closing_date}</span>
+        <div style={{ fontSize: '0.8125rem', color: '#94a3b8', textAlign: 'right' }}>
+          {job.closing_date}
         </div>
       )}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <a 
-          href={job.url} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          onClick={(e) => e.stopPropagation()}
-          style={{ color: '#3b82f6', opacity: 0.6 }}
-        >
-          <ExternalLink size={14} />
-        </a>
-        <ChevronRight size={16} style={{ color: '#cbd5e1' }} />
-      </div>
+      <ChevronRight size={16} style={{ color: '#cbd5e1' }} />
     </div>
   </div>
 );
@@ -80,9 +67,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [currentView, setCurrentView] = useState<View>('jobs');
-  
   const [filterSource, setFilterSource] = useState('All');
-  const [minSalary, setMinSalary] = useState('');
 
   useEffect(() => {
     fetch('http://localhost:3001/api/jobs')
@@ -128,23 +113,11 @@ function App() {
       }
       return val;
     };
-
-    const extractSection = (keywords: string[]) => {
-      for (const keyword of keywords) {
-        const regex = new RegExp(`${keyword}:?\\s*([\\s\\S]*?)(?=\\n\\n|\\n[A-Z][a-z]|$)`, 'i');
-        const match = desc.match(regex);
-        if (match && match[1].trim().length > 20) return match[1].trim();
-      }
-      return null;
-    };
-
     return {
       salary: extract('Salary Scale') || extract('Salary Range') || extract('Salary') || (job.salary_range !== 'null' ? job.salary_range : null),
       mode: normalizeMode(extract('Work Mode') || extract('Employment Type')),
       vacancies: extract('Number of Vacancies') || extract('No. of Vacancies') || extract('Vacancies'),
       future: desc.toLowerCase().includes('future requirements') ? 'Eligible for future requirements' : null,
-      responsibilities: extractSection(['Major Responsibilities', 'Key Responsibilities', 'Responsibilities', 'What you will do']),
-      qualifications: extractSection(['Key Qualifications', 'Skills and Qualifications', 'Qualifications', 'What you bring']),
     };
   };
 
@@ -152,18 +125,9 @@ function App() {
     const matchesSearch = job.job_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.source.toLowerCase().includes(searchTerm.toLowerCase());
-    
     const matchesSource = filterSource === 'All' || job.source === filterSource;
-    
-    let matchesSalary = true;
-    if (minSalary) {
-       const details = parseJobDetails(job);
-       const salaryNum = parseInt(details.salary?.replace(/[$,]/g, '') || '0');
-       matchesSalary = salaryNum >= parseInt(minSalary);
-    }
-
-    return matchesSearch && matchesSource && matchesSalary;
-  }), [jobs, searchTerm, filterSource, minSalary]);
+    return matchesSearch && matchesSource;
+  }), [jobs, searchTerm, filterSource]);
 
   const jobsByCompany = jobs.reduce((acc, job) => {
     if (!acc[job.source]) acc[job.source] = [];
@@ -172,178 +136,126 @@ function App() {
   }, {} as Record<string, Job[]>);
 
   const companies = Object.keys(jobsByCompany).sort();
-
   const currentJobDetails = useMemo(() => selectedJob ? parseJobDetails(selectedJob) : null, [selectedJob]);
 
-  const reset = () => { setSelectedJob(null); setCurrentView('jobs'); setSearchTerm(''); setFilterSource('All'); setMinSalary(''); };
+  const reset = () => { setSelectedJob(null); setCurrentView('jobs'); setSearchTerm(''); setFilterSource('All'); };
+
+  if (selectedJob) {
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: 'white', color: '#0f172a', fontFamily: 'Inter, system-ui, sans-serif' }}>
+        <header style={{ padding: '2rem 1.5rem', borderBottom: '1px solid #f1f5f9' }}>
+          <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div onClick={reset} style={{ fontSize: '1.5rem', fontWeight: 800, cursor: 'pointer', letterSpacing: '-0.03em' }}>GovJobs</div>
+            <button onClick={() => setSelectedJob(null)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b', fontWeight: 600, fontSize: '0.875rem' }}>
+              <ArrowLeft size={18} /> Back
+            </button>
+          </div>
+        </header>
+
+        <main style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem 1.5rem 10rem 1.5rem' }}>
+          <div style={{ marginBottom: '3rem' }}>
+            <div style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>{selectedJob.source}</div>
+            <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 2rem 0', letterSpacing: '-0.04em', lineHeight: 1.1 }}>{selectedJob.job_title}</h1>
+            
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3rem', borderTop: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: '1.5rem 0' }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.25rem' }}>Department</span>
+                <span style={{ fontWeight: 600 }}>{selectedJob.department}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.25rem' }}>Location</span>
+                <span style={{ fontWeight: 600 }}>{selectedJob.location}</span>
+              </div>
+              {currentJobDetails?.salary && (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.25rem' }}>Salary</span>
+                  <span style={{ fontWeight: 600 }}>{currentJobDetails.salary}</span>
+                </div>
+              )}
+              {currentJobDetails?.mode && (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.25rem' }}>Work Mode</span>
+                  <span style={{ fontWeight: 600 }}>{currentJobDetails.mode}</span>
+                </div>
+              )}
+              {currentJobDetails?.vacancies && (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', marginBottom: '0.25rem' }}>Vacancies</span>
+                  <span style={{ fontWeight: 600 }}>{currentJobDetails.vacancies}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div style={{ fontSize: '1rem', lineHeight: 1.8, color: '#334155', whiteSpace: 'pre-wrap' }}>
+            {selectedJob.description}
+          </div>
+
+          <div style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid #f1f5f9' }}>
+            <a href={selectedJob.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: '#2563eb', fontWeight: 700, textDecoration: 'none', fontSize: '1.125rem' }}>
+              Apply on official portal <ExternalLink size={20} />
+            </a>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: selectedJob ? 'white' : '#f8fafc', color: '#1e293b', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', flexDirection: 'column' }}>
-      {/* Universal Header */}
-      <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-            <div 
-              onClick={reset}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}
-            >
-              <div style={{ backgroundColor: '#2563eb', color: 'white', padding: '0.4rem', borderRadius: '6px' }}>
-                <Briefcase size={20} />
-              </div>
-              <span style={{ fontSize: '1.125rem', fontWeight: 900, letterSpacing: '-0.025em' }}>GovJobs</span>
-            </div>
-            
-            <nav style={{ display: 'flex', gap: '0.5rem' }}>
-              {[
-                { id: 'jobs', label: 'Jobs', icon: LayoutGrid },
-                { id: 'companies', label: 'Companies', icon: Building2 }
-              ].map(item => (
-                <button 
-                  key={item.id}
-                  onClick={() => { setCurrentView(item.id as View); setSearchTerm(''); setSelectedJob(null); }}
-                  style={{ 
-                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 700, transition: 'all 0.15s',
-                    backgroundColor: (currentView === item.id && !selectedJob) ? '#eff6ff' : 'transparent',
-                    color: (currentView === item.id && !selectedJob) ? '#2563eb' : '#64748b'
-                  }}
-                >
-                  <item.icon size={16} /> {item.label}
-                </button>
-              ))}
-            </nav>
-          </div>
+    <div style={{ minHeight: '100vh', backgroundColor: 'white', color: '#0f172a', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <header style={{ padding: '3rem 1.5rem', maxWidth: '800px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '2rem' }}>
+          <h1 onClick={reset} style={{ fontSize: '2.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.04em', cursor: 'pointer' }}>GovJobs</h1>
+          <nav style={{ display: 'flex', gap: '1.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#64748b' }}>
+            <span onClick={() => setCurrentView('jobs')} style={{ cursor: 'pointer', color: currentView === 'jobs' ? '#0f172a' : 'inherit' }}>Jobs</span>
+            <span onClick={() => setCurrentView('companies')} style={{ cursor: 'pointer', color: currentView === 'companies' ? '#0f172a' : 'inherit' }}>Companies</span>
+          </nav>
+        </div>
 
-          <div style={{ position: 'relative', width: '380px', flexShrink: 0 }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={18} style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input 
               type="text" 
-              placeholder="Search positions, orgs..." 
+              placeholder="Search positions..." 
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                if (selectedJob) setSelectedJob(null);
-              }}
-              style={{ 
-                width: '100%', padding: '0.6rem 1rem 0.6rem 2.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', color: '#1e293b', outline: 'none', fontSize: '0.875rem', boxSizing: 'border-box'
-              }}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: '100%', padding: '0.75rem 0.75rem 0.75rem 2rem', border: 'none', borderBottom: '1px solid #e2e8f0', outline: 'none', fontSize: '1rem', color: '#0f172a' }}
             />
           </div>
+          <select 
+            value={filterSource} 
+            onChange={(e) => setFilterSource(e.target.value)}
+            style={{ padding: '0.5rem', border: 'none', borderBottom: '1px solid #e2e8f0', fontSize: '0.875rem', fontWeight: 600, color: '#64748b', outline: 'none', backgroundColor: 'transparent' }}
+          >
+            <option value="All">All Sources</option>
+            {companies.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
       </header>
 
-      {selectedJob ? (
-        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '1.5rem', width: '100%', boxSizing: 'border-box', flex: 1 }}>
-          <button 
-            onClick={() => setSelectedJob(null)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b', fontWeight: 600, padding: '0 0 1.5rem 0', fontSize: '0.875rem' }}
-          >
-            <ArrowLeft size={18} /> Back to Jobs
-          </button>
+      <main style={{ maxWidth: '800px', margin: '0 auto', padding: '0 1.5rem 10rem 1.5rem' }}>
+        <div style={{ marginBottom: '1.5rem', fontSize: '0.8125rem', fontWeight: 600, color: '#94a3b8' }}>
+          {searchTerm ? `${filteredJobs.length} matches` : `${jobs.length} jobs currently available`}
+        </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>{selectedJob.source}</div>
-                <h1 style={{ fontSize: '1.75rem', fontWeight: 900, margin: '0 0 1.5rem 0', letterSpacing: '-0.02em', lineHeight: 1.1, color: '#0f172a' }}>{selectedJob.job_title}</h1>
-                
-                {currentJobDetails?.responsibilities && (
-                  <div style={{ marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>
-                      <ListChecks size={18} color="#2563eb" /> Responsibilities
-                    </div>
-                    <div style={{ fontSize: '0.875rem', lineHeight: 1.7, color: '#475569', whiteSpace: 'pre-wrap' }}>{currentJobDetails.responsibilities}</div>
-                  </div>
-                )}
-
-                {currentJobDetails?.qualifications && (
-                  <div style={{ marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>
-                      <Target size={18} color="#2563eb" /> Qualifications
-                    </div>
-                    <div style={{ fontSize: '0.875rem', lineHeight: 1.7, color: '#475569', whiteSpace: 'pre-wrap' }}>{currentJobDetails.qualifications}</div>
-                  </div>
-                )}
-
-                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>
-                    <Info size={18} color="#2563eb" /> Full Description
-                  </div>
-                  <div style={{ fontSize: '0.8125rem', lineHeight: 1.6, color: '#64748b', whiteSpace: 'pre-wrap' }}>{selectedJob.description}</div>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: '80px' }}>
-              {selectedJob.closing_date && (
-                <div style={{ backgroundColor: '#fef2f2', padding: '1rem', borderRadius: '12px', border: '1px solid #fee2e2' }}>
-                  <div style={{ fontSize: '0.55rem', fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Apply By</div>
-                  <div style={{ fontSize: '1.125rem', fontWeight: 900, color: '#b91c1c' }}>{selectedJob.closing_date}</div>
-                </div>
-              )}
-
-              <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {[
-                  { label: 'Department', val: selectedJob.department, icon: Building },
-                  { label: 'Location', val: selectedJob.location, icon: MapPin },
-                  { label: 'Salary', val: currentJobDetails?.salary, icon: DollarSign },
-                  { label: 'Work Mode', val: currentJobDetails?.mode, icon: Globe },
-                  { label: 'Vacancies', val: currentJobDetails?.vacancies, icon: Users },
-                  { label: 'Eligibility', val: currentJobDetails?.future, icon: Zap, highlight: true }
-                ].filter(i => i.val).map(item => (
-                  <div key={item.label}>
-                    <div style={{ fontSize: '0.5rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.2rem' }}>{item.label}</div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', color: item.highlight ? '#9a3412' : '#1e293b' }}>
-                      <item.icon size={12} color={item.highlight ? '#c2410c' : "#2563eb"} /> {item.val}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <a href={selectedJob.url} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#2563eb', color: 'white', padding: '0.75rem', borderRadius: '8px', textDecoration: 'none', fontWeight: 800, fontSize: '0.875rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)' }}>
-                Apply Now <ExternalLink size={16} />
-              </a>
-            </div>
-          </div>
-        </main>
-      ) : (
-        <main style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: '1.5rem', boxSizing: 'border-box', flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0 0.5rem', backgroundColor: 'white' }}>
-              <Filter size={14} color="#94a3b8" />
-              <select 
-                value={filterSource} 
-                onChange={(e) => setFilterSource(e.target.value)}
-                style={{ border: 'none', outline: 'none', fontSize: '0.75rem', fontWeight: 600, color: '#475569', padding: '0.35rem 0' }}
-              >
-                <option value="All">All Sources</option>
-                {companies.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            {loading ? (
-              <div style={{ textAlign: 'center', padding: '5rem', color: '#64748b', fontSize: '0.8125rem' }}>Loading positions...</div>
+        {loading ? (
+          <div style={{ padding: '4rem 0', color: '#94a3b8' }}>Loading...</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {currentView === 'jobs' ? (
+              filteredJobs.map(job => <JobRow key={job.id} job={job} onClick={() => setSelectedJob(job)} />)
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {currentView === 'jobs' ? (
-                  filteredJobs.map(job => <JobRow key={job.id} job={job} onClick={() => setSelectedJob(job)} />)
-                ) : (
-                  companies.map(name => (
-                    <div key={name} onClick={() => {setFilterSource(name); setCurrentView('jobs');}} style={{ padding: '0.6rem 1.5rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <Building2 size={16} color="#64748b" />
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{name}</span>
-                      </div>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6' }}>{jobsByCompany[name].length} Jobs</span>
-                    </div>
-                  ))
-                )}
-              </div>
+              companies.map(name => (
+                <div key={name} onClick={() => {setFilterSource(name); setCurrentView('jobs');}} style={{ padding: '1rem 0', borderBottom: '1px solid #f8fafc', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '1.125rem', fontWeight: 600 }}>{name}</span>
+                  <span style={{ fontSize: '0.875rem', color: '#64748b' }}>{jobsByCompany[name].length} positions</span>
+                </div>
+              ))
             )}
           </div>
-        </main>
-      )}
+        )}
+      </main>
     </div>
   );
 }
