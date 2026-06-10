@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Search, MapPin, Building, Calendar, ExternalLink, Briefcase, LayoutGrid, Building2, ChevronRight, X, DollarSign, Clock, ArrowLeft } from 'lucide-react';
+import { Search, MapPin, Building, Calendar, ExternalLink, Briefcase, LayoutGrid, Building2, ChevronRight, X, DollarSign, Clock, ArrowLeft, Users, Zap, Globe } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -20,61 +20,38 @@ const JobRow = ({ job, onClick }: { job: Job, onClick: () => void }) => (
   <div 
     onClick={onClick}
     style={{ 
-      display: 'grid',
-      gridTemplateColumns: '140px 2fr 1fr 140px 40px',
-      alignItems: 'center',
-      gap: '1.5rem',
-      padding: '0.6rem 1.5rem',
+      padding: '0.5rem 1.5rem',
       backgroundColor: 'white',
       borderBottom: '1px solid #f1f5f9',
       cursor: 'pointer',
-      transition: 'background-color 0.1s ease',
+      transition: 'all 0.1s ease',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '0.2rem'
     }}
     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
   >
-    <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#3b82f6', letterSpacing: '0.05em' }}>
-      {job.source}
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#1e293b' }}>{job.job_title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <a 
+          href={job.url} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          onClick={(e) => e.stopPropagation()}
+          style={{ color: '#3b82f6', opacity: 0.6, display: 'flex', alignItems: 'center' }}
+        >
+          <ExternalLink size={12} />
+        </a>
+        <ChevronRight size={14} style={{ color: '#cbd5e1' }} />
+      </div>
     </div>
-    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-      {job.job_title}
-    </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-      {job.department && <><Building size={12} style={{ opacity: 0.4 }} /> {job.department}</>}
-    </div>
-    <div style={{ fontSize: '0.75rem', color: '#94a3b8', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-      {job.closing_date || 'Ongoing'}
-    </div>
-    <div style={{ display: 'flex', justifyContent: 'flex-end', color: '#cbd5e1' }}>
-      <ChevronRight size={16} />
-    </div>
-  </div>
-);
-
-const CompanyRow = ({ name, count, onClick }: { name: string, count: number, onClick: () => void }) => (
-  <div 
-    onClick={onClick}
-    style={{ 
-      display: 'grid',
-      gridTemplateColumns: '48px 1fr 120px 40px',
-      alignItems: 'center',
-      gap: '1.5rem',
-      padding: '0.75rem 1.5rem',
-      backgroundColor: 'white',
-      borderBottom: '1px solid #f1f5f9',
-      cursor: 'pointer',
-      transition: 'background-color 0.1s ease',
-    }}
-    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'white')}
-  >
-    <div style={{ backgroundColor: '#f1f5f9', padding: '0.4rem', borderRadius: '6px', color: '#475569', display: 'flex', justifyContent: 'center' }}>
-      <Building2 size={18} />
-    </div>
-    <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#1e293b' }}>{name}</div>
-    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#3b82f6', textAlign: 'right' }}>{count} Positions</div>
-    <div style={{ display: 'flex', justifyContent: 'flex-end', color: '#cbd5e1' }}>
-      <ChevronRight size={16} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.65rem', color: '#64748b', fontWeight: 600 }}>
+      <span style={{ color: '#3b82f6', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.025em' }}>{job.source}</span>
+      {job.department && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Building size={10} /> {job.department}</span>}
+      {job.location && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><MapPin size={10} /> {job.location}</span>}
+      {job.closing_date && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Calendar size={10} /> {job.closing_date}</span>}
     </div>
   </div>
 );
@@ -128,79 +105,75 @@ function App() {
 
   const companies = Object.keys(jobsByCompany).sort();
 
-  const resetState = () => {
-    setCurrentView('jobs');
-    setSearchTerm('');
-    setSelectedJob(null);
-  };
-
   const parsedDetails = useMemo(() => {
     if (!selectedJob) return null;
     const desc = selectedJob.description;
     const extract = (key: string) => {
-      const match = desc.match(new RegExp(`${key}:?\\s*(.*)`, 'i'));
-      return match ? match[1]?.trim() : null;
+      const match = desc.match(new RegExp(`${key}:?\\s*([^\\n\\r]*)`, 'i'));
+      let val = match ? match[1]?.trim() : null;
+      if (val && (key.toLowerCase().includes('salary'))) {
+        val = val.replace(/\s*Information\s*$/i, '').replace(/Job Opportunity\s*$/i, '');
+      }
+      return val;
     };
 
     return {
-      salary: extract('Salary Scale') || extract('Salary') || selectedJob.salary_range,
+      salary: extract('Salary Scale') || extract('Salary Range') || extract('Salary') || (selectedJob.salary_range !== 'null' ? selectedJob.salary_range : null),
       mode: extract('Work Mode') || extract('Employment Type'),
-      duration: extract('Term') || extract('Duration'),
-      cleanDesc: desc.split('\n').filter(line => !line.includes(':')).join('\n').trim()
+      vacancies: extract('Number of Vacancies') || extract('No. of Vacancies') || extract('Vacancies'),
+      future: extract('Future Requirements') || extract('Future Needs'),
+      duration: extract('Term') || extract('Duration') || extract('Assignment Duration'),
     };
   }, [selectedJob]);
 
+  const reset = () => { setSelectedJob(null); setCurrentView('jobs'); setSearchTerm(''); };
+
   if (selectedJob) {
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: 'white', color: '#1e293b', fontFamily: 'Inter, system-ui, sans-serif' }}>
-        <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 50 }}>
-          <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center' }}>
-            <button 
-              onClick={() => setSelectedJob(null)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b', fontWeight: 600, padding: '0.5rem' }}
-            >
-              <ArrowLeft size={20} /> Back to Jobs
+      <div style={{ minHeight: '100vh', backgroundColor: 'white', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif' }}>
+        <header style={{ borderBottom: '1px solid #e2e8f0', padding: '0.4rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+            <div onClick={reset} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+               <Briefcase size={14} color="#2563eb" fill="#2563eb" />
+               <span style={{ fontWeight: 900, fontSize: '0.85rem' }}>GovJobs</span>
+            </div>
+            <button onClick={() => setSelectedJob(null)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b', fontWeight: 700, fontSize: '0.7rem' }}>
+              <ArrowLeft size={14} /> BACK TO LIST
             </button>
           </div>
+          <a href={selectedJob.url} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#2563eb', color: 'white', padding: '0.3rem 0.8rem', borderRadius: '4px', textDecoration: 'none', fontWeight: 800, fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            APPLY ON PORTAL <ExternalLink size={12} />
+          </a>
         </header>
-
-        <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '4rem 2rem' }}>
-          <div style={{ marginBottom: '3rem' }}>
-            <div style={{ display: 'inline-block', padding: '0.3rem 0.8rem', borderRadius: '6px', backgroundColor: '#eff6ff', color: '#2563eb', fontSize: '0.75rem', fontWeight: 900, marginBottom: '1.25rem', letterSpacing: '0.05em' }}>{selectedJob.source}</div>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0f172a', margin: '0 0 1.5rem 0', lineHeight: 1.05, letterSpacing: '-0.03em' }}>{selectedJob.job_title}</h2>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', padding: '2rem', backgroundColor: '#f8fafc', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>Department</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '1rem' }}><Building size={18} color="#2563eb" /> {selectedJob.department}</div>
+        <main style={{ flex: 1, padding: '1.5rem' }}>
+          <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase', marginBottom: '0.2rem', letterSpacing: '0.05em' }}>{selectedJob.source}</div>
+              <h1 style={{ fontSize: '1.375rem', fontWeight: 900, margin: '0 0 0.75rem 0', letterSpacing: '-0.02em', lineHeight: 1.1, color: '#0f172a' }}>{selectedJob.job_title}</h1>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.5rem' }}>
+                {[
+                  { label: 'Department', val: selectedJob.department, icon: Building },
+                  { label: 'Location', val: selectedJob.location, icon: MapPin },
+                  { label: 'Salary', val: parsedDetails?.salary, icon: DollarSign },
+                  { label: 'Work Mode', val: parsedDetails?.mode, icon: Globe },
+                  { label: 'Vacancies', val: parsedDetails?.vacancies, icon: Users },
+                  { label: 'Future Needs', val: parsedDetails?.future, icon: Zap, highlight: true }
+                ].filter(i => i.val).map(item => (
+                  <div key={item.label} style={{ backgroundColor: item.highlight ? '#fff7ed' : '#f8fafc', padding: '0.6rem 0.8rem', borderRadius: '8px', border: item.highlight ? '1px solid #ffedd5' : '1px solid #f1f5f9' }}>
+                    <div style={{ fontSize: '0.55rem', fontWeight: 800, color: item.highlight ? '#c2410c' : '#94a3b8', textTransform: 'uppercase', marginBottom: '0.15rem' }}>{item.label}</div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', color: item.highlight ? '#9a3412' : '#1e293b' }}>
+                      <item.icon size={12} color={item.highlight ? '#c2410c' : "#2563eb"} /> {item.val}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>Location</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '1rem' }}><MapPin size={18} color="#2563eb" /> {selectedJob.location}</div>
-              </div>
-              {parsedDetails?.salary && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>Salary</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '1rem' }}><DollarSign size={18} color="#2563eb" /> {parsedDetails.salary}</div>
-                </div>
-              )}
-              {parsedDetails?.mode && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>Work Mode</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '1rem' }}><Clock size={18} color="#2563eb" /> {parsedDetails.mode}</div>
-                </div>
-              )}
             </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '1.25rem', marginBottom: '4rem' }}>
-            <a href={selectedJob.url} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#2563eb', color: 'white', padding: '1rem 3rem', borderRadius: '12px', textDecoration: 'none', fontWeight: 800, fontSize: '1.125rem', display: 'inline-flex', alignItems: 'center', gap: '0.75rem', boxShadow: '0 10px 20px -5px rgba(37, 99, 235, 0.4)' }}>Apply on Official Portal <ExternalLink size={20} /></a>
-          </div>
-          
-          <div style={{ borderTop: '2px solid #f1f5f9', paddingTop: '3rem' }}>
-            <h4 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', marginBottom: '2rem', letterSpacing: '-0.01em' }}>Job Description</h4>
-            <div style={{ color: '#334155', lineHeight: 1.8, fontSize: '1.125rem', whiteSpace: 'pre-wrap' }}>
-              {parsedDetails?.cleanDesc || 'Visit the portal for full details.'}
+            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem' }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 900, color: '#0f172a', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Overview</h4>
+              <div style={{ fontSize: '0.8125rem', lineHeight: 1.5, color: '#475569', whiteSpace: 'pre-wrap' }}>
+                {selectedJob.description || 'Full details on official portal.'}
+              </div>
             </div>
           </div>
         </main>
@@ -209,94 +182,50 @@ function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', color: '#1e293b', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ width: '100%', maxWidth: '1800px', margin: '0 auto', padding: '0.75rem 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '3rem' }}>
-            <div 
-              onClick={resetState}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}
-            >
-              <div style={{ backgroundColor: '#2563eb', color: 'white', padding: '0.4rem', borderRadius: '6px' }}>
-                <Briefcase size={20} />
-              </div>
-              <span style={{ fontSize: '1.125rem', fontWeight: 900, letterSpacing: '-0.025em' }}>GovJobs</span>
-            </div>
-            
-            <nav style={{ display: 'flex', gap: '0.5rem' }}>
-              {[
-                { id: 'jobs', label: 'Jobs', icon: LayoutGrid },
-                { id: 'companies', label: 'Companies', icon: Building2 }
-              ].map(item => (
-                <button 
-                  key={item.id}
-                  onClick={() => { setCurrentView(item.id as View); setSearchTerm(''); }}
-                  style={{ 
-                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 700, transition: 'all 0.15s',
-                    backgroundColor: currentView === item.id ? '#eff6ff' : 'transparent',
-                    color: currentView === item.id ? '#2563eb' : '#64748b'
-                  }}
-                >
-                  <item.icon size={16} /> {item.label}
-                </button>
-              ))}
-            </nav>
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0', padding: '0.4rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem' }}>
+          <div onClick={reset} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+            <Briefcase size={16} color="#2563eb" fill="#2563eb" />
+            <span style={{ fontWeight: 900, fontSize: '0.9rem', letterSpacing: '-0.025em' }}>GovJobs</span>
           </div>
-
-          <div style={{ position: 'relative', width: '380px', flexShrink: 0 }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input 
-              type="text" 
-              placeholder="Search positions, orgs..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ 
-                width: '100%', padding: '0.6rem 1rem 0.6rem 2.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', color: '#1e293b', outline: 'none', fontSize: '0.875rem', boxSizing: 'border-box'
-              }}
-            />
-          </div>
+          <nav style={{ display: 'flex', gap: '0.25rem' }}>
+            <button onClick={() => setCurrentView('jobs')} style={{ padding: '0.3rem 0.7rem', borderRadius: '4px', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800, backgroundColor: currentView === 'jobs' ? '#eff6ff' : 'transparent', color: currentView === 'jobs' ? '#2563eb' : '#64748b', textTransform: 'uppercase' }}>Jobs</button>
+            <button onClick={() => setCurrentView('companies')} style={{ padding: '0.3rem 0.7rem', borderRadius: '4px', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800, backgroundColor: currentView === 'companies' ? '#eff6ff' : 'transparent', color: currentView === 'companies' ? '#2563eb' : '#64748b', textTransform: 'uppercase' }}>Companies</button>
+          </nav>
+        </div>
+        <div style={{ position: 'relative', width: '300px' }}>
+          <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+          <input 
+            type="text" 
+            placeholder="Search..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ width: '100%', padding: '0.35rem 0.35rem 0.35rem 2.25rem', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', fontSize: '0.75rem', boxSizing: 'border-box', backgroundColor: 'white', color: '#1e293b' }}
+          />
         </div>
       </header>
 
-      <main style={{ width: '100%', maxWidth: '1800px', margin: '0 auto', padding: '1.5rem', boxSizing: 'border-box' }}>
-        <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ padding: '0.75rem 1.5rem', backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: currentView === 'jobs' ? '140px 2fr 1fr 140px 40px' : '48px 1fr 120px 40px', gap: '1.5rem', alignItems: 'center' }}>
+      <main style={{ flex: 1, width: '100%' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '5rem', color: '#64748b', fontSize: '0.75rem', fontWeight: 600 }}>REFRESHING FEEDS...</div>
+        ) : (
+          <div style={{ backgroundColor: 'white' }}>
             {currentView === 'jobs' ? (
-              <>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Source</span>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Position Title</span>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Department</span>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', textAlign: 'right' }}>Deadline</span>
-              </>
+              filteredJobs.map(job => <JobRow key={job.id} job={job} onClick={() => setSelectedJob(job)} />)
             ) : (
-              <>
-                <span></span>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Organization Name</span>
-                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em', textAlign: 'right' }}>Active Count</span>
-              </>
+              companies.map(name => (
+                <div key={name} onClick={() => {setSearchTerm(name); setCurrentView('jobs');}} style={{ padding: '0.5rem 1.5rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <Building2 size={14} color="#64748b" />
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{name}</span>
+                  </div>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>{jobsByCompany[name].length} positions</span>
+                </div>
+              ))
             )}
-            <span></span>
           </div>
-
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '5rem', color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>Refreshing feeds...</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {currentView === 'jobs' ? (
-                filteredJobs.map(job => <JobRow key={job.id} job={job} onClick={() => setSelectedJob(job)} />)
-              ) : (
-                companies.map(name => (
-                  <CompanyRow 
-                    key={name} 
-                    name={name} 
-                    count={jobsByCompany[name]?.length || 0} 
-                    onClick={() => { setSearchTerm(name); setCurrentView('jobs'); }} 
-                  />
-                ))
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </main>
     </div>
   );
