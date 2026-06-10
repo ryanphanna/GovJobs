@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Search, MapPin, Building, Calendar, ExternalLink, Briefcase, LayoutGrid, Building2, ChevronRight, X, DollarSign, Clock, ArrowLeft, Users, Zap, Globe, Filter, ListChecks, Target, Info } from 'lucide-react';
+import { Search, MapPin, Building, Calendar, ExternalLink, Briefcase, LayoutGrid, Building2, ChevronRight, DollarSign, Clock, ArrowLeft, Users, Zap, Globe, Filter, ListChecks, Target, Info } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -177,28 +177,71 @@ function App() {
 
   const reset = () => { setSelectedJob(null); setCurrentView('jobs'); setSearchTerm(''); setFilterSource('All'); setMinSalary(''); };
 
-  if (selectedJob) {
-    return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif' }}>
-        <header style={{ borderBottom: '1px solid #e2e8f0', padding: '0.4rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 10 }}>
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: selectedJob ? 'white' : '#f8fafc', color: '#1e293b', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', flexDirection: 'column' }}>
+      {/* Universal Header */}
+      <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-            <div onClick={reset} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
-               <Briefcase size={16} color="#2563eb" fill="#2563eb" />
-               <span style={{ fontWeight: 900, fontSize: '0.85rem' }}>GovJobs</span>
+            <div 
+              onClick={reset}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}
+            >
+              <div style={{ backgroundColor: '#2563eb', color: 'white', padding: '0.4rem', borderRadius: '6px' }}>
+                <Briefcase size={20} />
+              </div>
+              <span style={{ fontSize: '1.125rem', fontWeight: 900, letterSpacing: '-0.025em' }}>GovJobs</span>
             </div>
-            <button onClick={() => setSelectedJob(null)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b', fontWeight: 700, fontSize: '0.7rem' }}>
-              <ArrowLeft size={14} /> BACK TO LIST
-            </button>
+            
+            <nav style={{ display: 'flex', gap: '0.5rem' }}>
+              {[
+                { id: 'jobs', label: 'Jobs', icon: LayoutGrid },
+                { id: 'companies', label: 'Companies', icon: Building2 }
+              ].map(item => (
+                <button 
+                  key={item.id}
+                  onClick={() => { setCurrentView(item.id as View); setSearchTerm(''); setSelectedJob(null); }}
+                  style={{ 
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 700, transition: 'all 0.15s',
+                    backgroundColor: (currentView === item.id && !selectedJob) ? '#eff6ff' : 'transparent',
+                    color: (currentView === item.id && !selectedJob) ? '#2563eb' : '#64748b'
+                  }}
+                >
+                  <item.icon size={16} /> {item.label}
+                </button>
+              ))}
+            </nav>
           </div>
-          <a href={selectedJob.url} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#2563eb', color: 'white', padding: '0.35rem 1rem', borderRadius: '4px', textDecoration: 'none', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            APPLY ON PORTAL <ExternalLink size={12} />
-          </a>
-        </header>
 
-        <main style={{ flex: 1, padding: '1.5rem' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }}>
+          <div style={{ position: 'relative', width: '380px', flexShrink: 0 }}>
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <input 
+              type="text" 
+              placeholder="Search positions, orgs..." 
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                if (selectedJob) setSelectedJob(null);
+              }}
+              style={{ 
+                width: '100%', padding: '0.6rem 1rem 0.6rem 2.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: 'white', color: '#1e293b', outline: 'none', fontSize: '0.875rem', boxSizing: 'border-box'
+              }}
+            />
+          </div>
+        </div>
+      </header>
+
+      {selectedJob ? (
+        <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '1.5rem', width: '100%', boxSizing: 'border-box', flex: 1 }}>
+          <button 
+            onClick={() => setSelectedJob(null)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b', fontWeight: 600, padding: '0 0 1.5rem 0', fontSize: '0.875rem' }}
+          >
+            <ArrowLeft size={18} /> Back to Jobs
+          </button>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {/* Main Content */}
               <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                 <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#3b82f6', textTransform: 'uppercase', marginBottom: '0.4rem', letterSpacing: '0.05em' }}>{selectedJob.source}</div>
                 <h1 style={{ fontSize: '1.75rem', fontWeight: 900, margin: '0 0 1.5rem 0', letterSpacing: '-0.02em', lineHeight: 1.1, color: '#0f172a' }}>{selectedJob.job_title}</h1>
@@ -230,7 +273,6 @@ function App() {
               </div>
             </div>
 
-            {/* Sidebar Metadata */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: '80px' }}>
               {selectedJob.closing_date && (
                 <div style={{ backgroundColor: '#fef2f2', padding: '1rem', borderRadius: '12px', border: '1px solid #fee2e2' }}>
@@ -263,71 +305,45 @@ function App() {
             </div>
           </div>
         </main>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      <header style={{ backgroundColor: 'white', borderBottom: '1px solid #e2e8f0', padding: '0.4rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2.5rem' }}>
-          <div onClick={reset} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
-            <Briefcase size={16} color="#2563eb" fill="#2563eb" />
-            <span style={{ fontWeight: 900, fontSize: '0.9rem', letterSpacing: '-0.025em' }}>GovJobs</span>
-          </div>
-          <nav style={{ display: 'flex', gap: '0.25rem' }}>
-            <button onClick={() => setCurrentView('jobs')} style={{ padding: '0.3rem 0.7rem', borderRadius: '4px', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800, backgroundColor: currentView === 'jobs' ? '#eff6ff' : 'transparent', color: currentView === 'jobs' ? '#2563eb' : '#64748b', textTransform: 'uppercase' }}>Jobs</button>
-            <button onClick={() => setCurrentView('companies')} style={{ padding: '0.3rem 0.7rem', borderRadius: '4px', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 800, backgroundColor: currentView === 'companies' ? '#eff6ff' : 'transparent', color: currentView === 'companies' ? '#2563eb' : '#64748b', textTransform: 'uppercase' }}>Companies</button>
-          </nav>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0 0.5rem', backgroundColor: 'white' }}>
-            <Filter size={14} color="#94a3b8" />
-            <select 
-              value={filterSource} 
-              onChange={(e) => setFilterSource(e.target.value)}
-              style={{ border: 'none', outline: 'none', fontSize: '0.75rem', fontWeight: 600, color: '#475569', padding: '0.35rem 0' }}
-            >
-              <option value="All">All Sources</option>
-              {companies.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+      ) : (
+        <main style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: '1.5rem', boxSizing: 'border-box', flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0 0.5rem', backgroundColor: 'white' }}>
+              <Filter size={14} color="#94a3b8" />
+              <select 
+                value={filterSource} 
+                onChange={(e) => setFilterSource(e.target.value)}
+                style={{ border: 'none', outline: 'none', fontSize: '0.75rem', fontWeight: 600, color: '#475569', padding: '0.35rem 0' }}
+              >
+                <option value="All">All Sources</option>
+                {companies.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
           </div>
 
-          <div style={{ position: 'relative', width: '300px' }}>
-            <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '0.35rem 0.35rem 0.35rem 2.25rem', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none', fontSize: '0.75rem', boxSizing: 'border-box', backgroundColor: 'white', color: '#1e293b' }}
-            />
-          </div>
-        </div>
-      </header>
-
-      <main style={{ flex: 1, width: '100%' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '5rem', color: '#64748b', fontSize: '0.75rem', fontWeight: 600 }}>REFRESHING FEEDS...</div>
-        ) : (
-          <div style={{ backgroundColor: 'white' }}>
-            {currentView === 'jobs' ? (
-              filteredJobs.map(job => <JobRow key={job.id} job={job} onClick={() => setSelectedJob(job)} />)
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '5rem', color: '#64748b', fontSize: '0.8125rem' }}>Loading positions...</div>
             ) : (
-              companies.map(name => (
-                <div key={name} onClick={() => {setFilterSource(name); setCurrentView('jobs');}} style={{ padding: '0.5rem 1.5rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <Building2 size={14} color="#64748b" />
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{name}</span>
-                  </div>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#3b82f6', textTransform: 'uppercase' }}>{jobsByCompany[name].length} positions</span>
-                </div>
-              ))
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {currentView === 'jobs' ? (
+                  filteredJobs.map(job => <JobRow key={job.id} job={job} onClick={() => setSelectedJob(job)} />)
+                ) : (
+                  companies.map(name => (
+                    <div key={name} onClick={() => {setFilterSource(name); setCurrentView('jobs');}} style={{ padding: '0.6rem 1.5rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <Building2 size={16} color="#64748b" />
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{name}</span>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6' }}>{jobsByCompany[name].length} Jobs</span>
+                    </div>
+                  ))
+                )}
+              </div>
             )}
           </div>
-        )}
-      </main>
+        </main>
+      )}
     </div>
   );
 }
