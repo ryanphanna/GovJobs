@@ -19,10 +19,11 @@ type View = 'home' | 'jobs' | 'saved' | 'companies';
 
 const fixCasing = (s: string) => {
   if (!s) return s;
-  if (s === s.toUpperCase()) {
-    return s.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  const cleaned = s.replace(/\s+/g, ' ').trim();
+  if (cleaned === cleaned.toUpperCase()) {
+    return cleaned.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }
-  return s;
+  return cleaned;
 };
 
 const normalizeMode = (mode: string | null) => {
@@ -34,11 +35,41 @@ const normalizeMode = (mode: string | null) => {
   return mode;
 };
 
+const ActionGroup = ({ job, onToggleSave, showBack = false, onBack }: { job: Job, onToggleSave: (e: React.MouseEvent) => void, showBack?: boolean, onBack?: () => void }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+    <a 
+      href={job.url} 
+      target="_blank" 
+      rel="noopener noreferrer" 
+      onClick={(e) => e.stopPropagation()}
+      style={{ color: '#0f172a', opacity: 0.6, display: 'flex', alignItems: 'center' }}
+      title="Apply on official portal"
+    >
+      <ExternalLink size={18} />
+    </a>
+    <button 
+      onClick={onToggleSave}
+      style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: job.is_saved ? '#0f172a' : '#cbd5e1', padding: 0, display: 'flex' }}
+      title={job.is_saved ? "Unsave job" : "Save job"}
+    >
+      <Bookmark size={18} fill={job.is_saved ? '#0f172a' : 'transparent'} />
+    </button>
+    {showBack && onBack && (
+      <button 
+        onClick={onBack}
+        style={{ marginLeft: '1rem', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b', fontWeight: 600, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+      >
+        <ArrowLeft size={20} /> Back
+      </button>
+    )}
+  </div>
+);
+
 const JobRow = ({ job, onClick, onToggleSave }: { job: Job, onClick: () => void, onToggleSave: (e: React.MouseEvent) => void }) => (
   <div 
     onClick={onClick}
     style={{ 
-      padding: '0.5rem 0',
+      padding: '0.6rem 0',
       backgroundColor: 'white',
       borderBottom: '1px solid #f8fafc',
       cursor: 'pointer',
@@ -51,40 +82,21 @@ const JobRow = ({ job, onClick, onToggleSave }: { job: Job, onClick: () => void,
     onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
     onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
   >
-    <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: '1rem' }}>
-      <button 
-        onClick={onToggleSave}
-        style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: job.is_saved ? '#0f172a' : '#cbd5e1', padding: 0, display: 'flex' }}
-      >
-        <Bookmark size={16} fill={job.is_saved ? '#0f172a' : 'transparent'} />
-      </button>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.1rem' }}>{job.job_title}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
-          <span style={{ color: '#0f172a', fontWeight: 600 }}>{job.source}</span>
-          {job.department && <span>• {job.department}</span>}
-        </div>
+    <div style={{ minWidth: 0, flex: 1 }}>
+      <div style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.15rem' }}>{job.job_title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.8125rem', color: '#64748b' }}>
+        <span style={{ color: '#0f172a', fontWeight: 600 }}>{job.source}</span>
+        {job.department && <span>• {job.department}</span>}
       </div>
     </div>
     
-    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexShrink: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexShrink: 0 }}>
       {job.closing_date && (
-        <div style={{ fontSize: '0.75rem', color: '#94a3b8', textAlign: 'right', fontWeight: 500 }}>
+        <div style={{ fontSize: '0.8125rem', color: '#94a3b8', textAlign: 'right', fontWeight: 500 }}>
           {job.closing_date}
         </div>
       )}
-      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-        <a 
-          href={job.url} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          onClick={(e) => e.stopPropagation()}
-          style={{ color: '#0f172a', opacity: 0.4 }}
-        >
-          <ExternalLink size={14} />
-        </a>
-        <ChevronRight size={16} style={{ color: '#cbd5e1' }} />
-      </div>
+      <ActionGroup job={job} onToggleSave={onToggleSave} />
     </div>
   </div>
 );
@@ -92,15 +104,15 @@ const JobRow = ({ job, onClick, onToggleSave }: { job: Job, onClick: () => void,
 const FilterSection = ({ title, children, defaultOpen = true }: { title: string, children: React.ReactNode, defaultOpen?: boolean }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div style={{ paddingBottom: '0.75rem', marginBottom: '0.75rem', borderBottom: '1px solid #f1f5f9' }}>
+    <div style={{ paddingBottom: '1rem', marginBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: 'none', backgroundColor: 'transparent', padding: '0.25rem 0', cursor: 'pointer', marginBottom: isOpen ? '0.35rem' : 0 }}
+        style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: 'none', backgroundColor: 'transparent', padding: '0.25rem 0', cursor: 'pointer', marginBottom: isOpen ? '0.5rem' : 0 }}
       >
-        <span style={{ fontSize: '0.6rem', fontWeight: 800, color: '#0f172a', letterSpacing: '0.05em' }}>{title}</span>
-        {isOpen ? <ChevronUp size={12} color="#0f172a" /> : <ChevronDown size={12} color="#0f172a" />}
+        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0f172a', letterSpacing: '0.05em' }}>{title}</span>
+        {isOpen ? <ChevronUp size={14} color="#0f172a" /> : <ChevronDown size={14} color="#0f172a" />}
       </button>
-      {isOpen && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>{children}</div>}
+      {isOpen && <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>{children}</div>}
     </div>
   );
 };
@@ -109,9 +121,9 @@ const FilterButton = ({ label, active, onClick }: { label: string, active: boole
   <button 
     onClick={onClick}
     style={{ 
-      padding: '0.25rem 0.5rem', 
-      borderRadius: '4px', 
-      fontSize: '0.65rem', 
+      padding: '0.35rem 0.625rem', 
+      borderRadius: '6px', 
+      fontSize: '0.75rem', 
       fontWeight: 600, 
       border: '1px solid',
       borderColor: active ? '#0f172a' : '#e2e8f0',
@@ -132,14 +144,12 @@ function App() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [currentView, setCurrentView] = useState<View>('home');
   
-  // Advanced Filters
   const [minSalary, setMinSalary] = useState<number | null>(null);
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
   const [closingSoon, setClosingSoon] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync state with browser history
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       const path = window.location.hash;
@@ -162,7 +172,6 @@ function App() {
       }
     };
     window.addEventListener('popstate', handlePopState);
-    // Initial check
     handlePopState({} as PopStateEvent);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [jobs]);
@@ -245,6 +254,7 @@ function App() {
       const match = desc.match(new RegExp(`${key}:?\\s*([^\\n\\r]*)`, 'i'));
       let val = match ? match[1]?.trim() : null;
       if (val) {
+        val = val.replace(/^[,.\s]+/, ''); // Strip leading junk
         if (key.toLowerCase().includes('salary')) {
            val = val.replace(/Information:?/gi, '').replace(/Job Opportunity/gi, '').trim();
         }
@@ -260,7 +270,9 @@ function App() {
       for (const keyword of keywords) {
         const regex = new RegExp(`${keyword}:?\\s*([\\s\\S]*?)(?=\\n\\n|\\n[A-Z][a-z]|$)`, 'i');
         const match = desc.match(regex);
-        if (match && match[1].trim().length > 20) return match[1].trim();
+        if (match && match[1].trim().length > 20) {
+           return match[1].trim().replace(/^[,.\s]+/, '');
+        }
       }
       return null;
     };
@@ -315,7 +327,7 @@ function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'white', color: '#0f172a', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', flexDirection: 'column' }}>
       {/* Universal Sticky Header */}
-      <header style={{ padding: '2rem 2rem 1.5rem 2rem', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 50, borderBottom: '1px solid #f1f5f9' }}>
+      <header style={{ padding: '2.5rem 2rem 1.5rem 2rem', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 50, borderBottom: '1px solid #f1f5f9' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', position: 'relative' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '3rem' }}>
             <h1 onClick={reset} style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, letterSpacing: '-0.04em', cursor: 'pointer', flexShrink: 0 }}>GovJobs</h1>
@@ -350,18 +362,16 @@ function App() {
               pointerEvents: isSearchExpanded ? 'none' : 'auto'
             }}>
               <span onClick={() => handleNavigate('saved')} style={{ cursor: 'pointer', color: (currentView === 'saved' && !selectedJob) ? '#0f172a' : 'inherit' }}>Saved</span>
-              <span onClick={() => setIsSearchExpanded(true)} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              <button 
+                onClick={() => setIsSearchExpanded(true)} 
+                style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit', fontSize: 'inherit', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: 0 }}
+              >
                 <Search size={18} style={{ transform: 'translateY(1px)' }} /> Search
-              </span>
+              </button>
             </div>
 
             {selectedJob && !isSearchExpanded && (
-              <button 
-                onClick={handleBackToList}
-                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b', fontWeight: 600, fontSize: '0.875rem', padding: 0 }}
-              >
-                <ArrowLeft size={18} /> Back
-              </button>
+              <ActionGroup job={selectedJob} onToggleSave={(e) => toggleSaveJob(selectedJob, e)} showBack onBack={handleBackToList} />
             )}
           </div>
 
@@ -387,7 +397,7 @@ function App() {
               <input 
                 ref={searchInputRef}
                 type="text" 
-                placeholder="Search positions, organizations..." 
+                placeholder="Search positions, companies..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Escape' && setIsSearchExpanded(false)}
@@ -404,7 +414,7 @@ function App() {
       {selectedJob ? (
         <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '1.5rem', width: '100%', boxSizing: 'border-box', flex: 1 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '4rem', alignItems: 'start' }}>
-            {/* Sidebar Metadata (Left Aligned for consistency) */}
+            {/* Sidebar Metadata */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '80px' }}>
               {selectedJob.closing_date && (
                 <div style={{ backgroundColor: '#fef2f2', padding: '1rem', borderRadius: '12px', border: '1px solid #fee2e2' }}>
@@ -425,7 +435,7 @@ function App() {
                   <div key={item.label}>
                     <div style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.15rem' }}>{item.label}</div>
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', color: item.highlight ? '#9a3412' : '#1e293b' }}>
-                      <item.icon size={14} color={item.highlight ? '#c2410c' : "#2563eb"} /> {item.val}
+                      {item.val}
                     </div>
                   </div>
                 ))}
@@ -434,40 +444,27 @@ function App() {
 
             {/* Main Content */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
-                  <div style={{ color: '#2563eb', fontSize: '0.8125rem', fontWeight: 700 }}>{selectedJob.source}</div>
-                  <button onClick={(e) => toggleSaveJob(selectedJob, e)} style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: selectedJob.is_saved ? '#0f172a' : '#cbd5e1', padding: 0, display: 'flex' }}><Bookmark size={20} fill={selectedJob.is_saved ? '#0f172a' : 'transparent'} /></button>
-                </div>
-                <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: '0 0 1.5rem 0', letterSpacing: '-0.04em', lineHeight: 1.1 }}>{selectedJob.job_title}</h1>
+              <div style={{ backgroundColor: 'white', padding: '0', borderRadius: '0' }}>
+                <div style={{ color: '#2563eb', fontSize: '0.8125rem', fontWeight: 700, marginBottom: '0.5rem' }}>{selectedJob.source}</div>
+                <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 1.5rem 0', letterSpacing: '-0.04em', lineHeight: 1.1 }}>{selectedJob.job_title}</h1>
                 
-                <a href={selectedJob.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', backgroundColor: '#0f172a', color: 'white', padding: '0.75rem 2rem', borderRadius: '10px', textDecoration: 'none', fontWeight: 700, fontSize: '0.875rem', marginBottom: '2.5rem' }}>
-                  Apply on official portal <ExternalLink size={16} />
-                </a>
-
                 {currentJobDetails?.responsibilities && (
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '0.75rem', letterSpacing: '0.025em' }}>
-                      <ListChecks size={16} color="#2563eb" /> Responsibilities
-                    </div>
-                    <div style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#475569', whiteSpace: 'pre-wrap' }}>{currentJobDetails.responsibilities}</div>
+                  <div style={{ marginBottom: '2.5rem' }}>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>Responsibilities</div>
+                    <div style={{ fontSize: '0.9375rem', lineHeight: 1.7, color: '#475569', whiteSpace: 'pre-wrap' }}>{currentJobDetails.responsibilities}</div>
                   </div>
                 )}
 
                 {currentJobDetails?.qualifications && (
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '0.75rem', letterSpacing: '0.025em' }}>
-                      <Target size={16} color="#2563eb" /> Qualifications
-                    </div>
-                    <div style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#475569', whiteSpace: 'pre-wrap' }}>{currentJobDetails.qualifications}</div>
+                  <div style={{ marginBottom: '2.5rem' }}>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>Qualifications</div>
+                    <div style={{ fontSize: '0.9375rem', lineHeight: 1.7, color: '#475569', whiteSpace: 'pre-wrap' }}>{currentJobDetails.qualifications}</div>
                   </div>
                 )}
 
-                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '0.75rem', letterSpacing: '0.025em' }}>
-                    <Info size={16} color="#2563eb" /> Full Description
-                  </div>
-                  <div style={{ fontSize: '0.8125rem', lineHeight: 1.6, color: '#64748b', whiteSpace: 'pre-wrap' }}>{selectedJob.description}</div>
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '2rem' }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>Full Description</div>
+                  <div style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#64748b', whiteSpace: 'pre-wrap' }}>{selectedJob.description}</div>
                 </div>
               </div>
             </div>
@@ -476,10 +473,9 @@ function App() {
       ) : (
         <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem', width: '100%', boxSizing: 'border-box', flex: 1 }}>
           {currentView === 'home' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem' }}>
               <section>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-                   <Sparkles size={20} color="#2563eb" />
+                <div style={{ marginBottom: '2rem' }}>
                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Most Recent Postings</h2>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -489,8 +485,7 @@ function App() {
               </section>
 
               <section>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-                   <Clock size={20} color="#ef4444" />
+                <div style={{ marginBottom: '2rem' }}>
                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Closing Soon</h2>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -502,7 +497,6 @@ function App() {
             <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '4rem' }}>
               <aside style={{ display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: '#0f172a' }}>
-                  <Filter size={16} />
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filters</span>
                 </div>
                 <FilterSection title="Salary Min">{[50000, 75000, 100000, 125000].map(val => (<FilterButton key={val} label={`$${val/1000}k+`} active={minSalary === val} onClick={() => setMinSalary(minSalary === val ? null : val)} />))}</FilterSection>
@@ -513,7 +507,7 @@ function App() {
 
               <div style={{ minWidth: 0 }}>
                 <div style={{ marginBottom: '1rem', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {searchTerm || selectedModes.length > 0 || minSalary || closingSoon ? `${filteredJobs.length} matches found` : `${filteredJobs.length} jobs available`}
+                  {currentView === 'companies' ? `${companies.length} hiring companies` : (searchTerm || selectedModes.length > 0 || minSalary || closingSoon ? `${filteredJobs.length} matches found` : `${filteredJobs.length} jobs available`)}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {(currentView === 'jobs' || currentView === 'saved') ? (
