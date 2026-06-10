@@ -14,6 +14,14 @@ app.get('/api/jobs', async (req, res) => {
   res.json(jobs);
 });
 
+app.post('/api/jobs/:id/toggle-save', async (req, res) => {
+  const { id } = req.params;
+  const db = await initDb();
+  await db.run('UPDATE jobs SET is_saved = 1 - is_saved WHERE id = ?', [id]);
+  const updated = await db.get('SELECT is_saved FROM jobs WHERE id = ?', [id]);
+  res.json(updated);
+});
+
 app.listen(port, () => {
   console.log(`API server running at http://localhost:${port}`);
 });

@@ -1,5 +1,5 @@
 import { chromium, Browser, Page } from 'playwright';
-import { initDb, saveJob } from './db.js';
+import { initDb, saveJob, cleanupExpiredJobs } from './db.js';
 
 interface JobSummary {
   id: string;
@@ -174,6 +174,9 @@ async function main() {
 
   // 4. Waterfront
   await scrapeWaterfront(page);
+
+  console.log('Cleaning up expired jobs...');
+  await cleanupExpiredJobs(await initDb());
 
   console.log('All scraping tasks complete.');
   await browser.close();

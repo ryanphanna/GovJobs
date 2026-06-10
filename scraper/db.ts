@@ -40,8 +40,33 @@ export async function saveJob(db: Database, job: {
   source: string;
 }) {
   await db.run(
-    `INSERT OR REPLACE INTO jobs (id, job_title, department, location, salary_range, description, closing_date, url, source)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO jobs (id, job_title, department, location, salary_range, description, closing_date, url, source, scraped_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(id) DO UPDATE SET
+       job_title = excluded.job_title,
+       department = excluded.department,
+       location = excluded.location,
+       salary_range = excluded.salary_range,
+       description = excluded.description,
+       closing_date = excluded.closing_date,
+       url = excluded.url,
+       source = excluded.source,
+       scraped_at = CURRENT_TIMESTAMP`,
     [job.id, job.job_title, job.department, job.location, job.salary_range, job.description, job.closing_date, job.url, job.source]
+  );
+}
+
+export async function toggleSaveJob(db: Database, id: string) {
+  await db.run(
+    `UPDATE jobs SET is_saved = 1 - is_saved WHERE id = ?`,
+    [id]
+  );
+}
+
+export async function cleanupExpiredJobs(db: Database) {
+  // Delete jobs that weren't updated in the last 10 minutes (meaning the latest scrape run missed them)
+  // AND are not explicitly saved by the user.
+  await db.run(
+    `DELETE FROM jobs WHERE is_saved = 0 AND scraped_at < datetime('now', '-10 minutes')`
   );
 }
