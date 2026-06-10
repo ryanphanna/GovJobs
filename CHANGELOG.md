@@ -8,16 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Local "Saved Jobs" (bookmarking) feature:
-  - Persistent bookmarking stored in local SQLite database.
-  - Dedicated "Saved" view for tracked opportunities.
-  - Interactive bookmark icons in list rows and detail views.
-- Advanced multi-dimension filtering system:
-  - Salary-based filtering (e.g., $75k+, $100k+).
-  - Work Mode filtering (In-person, Hybrid, Remote).
-  - "Closing soon" toggle for time-sensitive opportunities.
-- Expandable Search button in the primary menu with smooth CSS transitions.
-- Automatic database cleanup for expired jobs (preserving saved items).
+- Homepage "Peek" view showing top 5 "Most Recent Postings" and "Closing Soon".
+- Unique internal ID routing with hash-based paths (`#job/{id}`, `#saved`, etc.).
+- Universal header baseline (bottom-justified) alignment for consistent typography.
+- Expandable search integration with smooth right-aligned transitions.
+
+### Changed
+- Unified sidebar positioning: Moved job details metadata to the left for layout stability.
+- Improved header organization: Jobs/Companies on left, Saved/Search on right.
+- Refined navigation reset logic (clicking GovJobs returns to home).
+- Enhanced data normalization for TTC department strings and job titles.
 
 ### Changed
 - Radical UI density pass:
