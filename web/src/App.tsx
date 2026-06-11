@@ -67,7 +67,7 @@ const ActionGroup = ({ job, onToggleSave, showBack = false, onBack, showApply = 
   </div>
 );
 
-const JobRow = ({ job, onClick, onToggleSave }: { job: Job, onClick: () => void, onToggleSave: (e: React.MouseEvent) => void }) => (
+const JobRow = ({ job, onClick }: { job: Job, onClick: () => void }) => (
   <div 
     onClick={onClick}
     style={{ 
@@ -84,19 +84,11 @@ const JobRow = ({ job, onClick, onToggleSave }: { job: Job, onClick: () => void,
     onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
     onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
   >
-    <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: '1rem' }}>
-      <button 
-        onClick={onToggleSave}
-        style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: job.is_saved ? '#2563eb' : '#cbd5e1', padding: 0, display: 'flex' }}
-      >
-        <Bookmark size={16} fill={job.is_saved ? '#2563eb' : 'transparent'} />
-      </button>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.1rem' }}>{job.job_title}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
-          <span style={{ color: '#0f172a', fontWeight: 600 }}>{job.source}</span>
-          {job.department && <span>• {job.department}</span>}
-        </div>
+    <div style={{ minWidth: 0, flex: 1 }}>
+      <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.1rem' }}>{job.job_title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
+        <span style={{ color: '#0f172a', fontWeight: 600 }}>{job.source}</span>
+        {job.department && <span>• {job.department}</span>}
       </div>
     </div>
     
@@ -342,86 +334,102 @@ function App() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'white', color: '#0f172a', fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', flexDirection: 'column' }}>
       {/* Universal Sticky Header */}
-      <header style={{ padding: '2rem 2rem 1.5rem 2rem', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 50, borderBottom: '1px solid #f1f5f9' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '3rem' }}>
-            <h1 onClick={reset} style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, letterSpacing: '-0.04em', cursor: 'pointer', flexShrink: 0 }}>GovJobs</h1>
-            
-            <nav style={{ 
-              display: 'flex', 
-              alignItems: 'baseline',
-              gap: '2.5rem', 
-              fontSize: '1rem', 
-              fontWeight: 600, 
-              color: '#64748b',
-              transition: 'opacity 0.2s ease',
-              opacity: isSearchExpanded ? 0 : 1,
-              visibility: isSearchExpanded ? 'hidden' : 'visible'
-            }}>
-              <span onClick={() => handleNavigate('jobs')} style={{ cursor: 'pointer', color: (currentView === 'jobs' && !selectedJob) ? '#0f172a' : 'inherit' }}>Jobs</span>
-              <span onClick={() => handleNavigate('companies')} style={{ cursor: 'pointer', color: (currentView === 'companies' && !selectedJob) ? '#0f172a' : 'inherit' }}>Companies</span>
-            </nav>
-          </div>
+      <header style={{ borderBottom: '1px solid #f1f5f9', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 50 }}>
+        <div style={{ padding: '2rem 2rem 1.5rem 2rem', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'baseline', position: 'relative' }}>
+            <div style={{ display: 'grid', gridAutoFlow: 'column', alignItems: 'baseline', justifyContent: 'start', gap: '3rem' }}>
+              <h1 onClick={reset} style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, letterSpacing: '-0.04em', cursor: 'pointer', lineHeight: 1 }}>GovJobs</h1>
+              
+              <nav style={{ 
+                fontSize: '1rem', 
+                fontWeight: 600, 
+                color: '#64748b',
+                transition: 'opacity 0.2s ease',
+                opacity: isSearchExpanded ? 0 : 1,
+                visibility: isSearchExpanded ? 'hidden' : 'visible'
+              }}>
+                <span 
+                  onClick={() => handleNavigate('jobs')} 
+                  style={{ cursor: 'pointer', color: (currentView === 'jobs' && !selectedJob) ? '#0f172a' : 'inherit', display: 'inline-block', marginRight: '2.5rem' }}
+                >
+                  Jobs
+                </span>
+                <span 
+                  onClick={() => handleNavigate('companies')} 
+                  style={{ cursor: 'pointer', color: (currentView === 'companies' && !selectedJob) ? '#0f172a' : 'inherit', display: 'inline-block' }}
+                >
+                  Companies
+                </span>
+              </nav>
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '2.5rem' }}>
+            <div style={{ display: 'grid', gridAutoFlow: 'column', alignItems: 'baseline', gap: '2.5rem' }}>
+              <div style={{ 
+                display: 'grid',
+                gridAutoFlow: 'column',
+                alignItems: 'baseline',
+                gap: '2.5rem',
+                fontSize: '1rem', 
+                fontWeight: 600, 
+                color: '#64748b',
+                transition: 'opacity 0.2s ease',
+                opacity: isSearchExpanded ? 0 : 1,
+                visibility: isSearchExpanded ? 'hidden' : 'visible',
+                pointerEvents: isSearchExpanded ? 'none' : 'auto'
+              }}>
+                <span 
+                  onClick={() => handleNavigate('saved')} 
+                  style={{ cursor: 'pointer', color: (currentView === 'saved' && !selectedJob) ? '#0f172a' : 'inherit' }}
+                >
+                  Saved
+                </span>
+                <span 
+                  onClick={() => setIsSearchExpanded(true)} 
+                  style={{ cursor: 'pointer', display: 'grid', gridAutoFlow: 'column', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <Search size={18} style={{ opacity: 0.8 }} />
+                  <span>Search</span>
+                </span>
+              </div>
+
+              {selectedJob && !isSearchExpanded && (
+                <ActionGroup job={selectedJob} onToggleSave={(e) => toggleSaveJob(selectedJob, e)} showBack onBack={handleBackToList} />
+              )}
+            </div>
+
+            {/* Expandable Search Overlay */}
             <div style={{ 
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
               display: 'flex', 
               alignItems: 'baseline', 
-              gap: '2.5rem', 
-              fontSize: '1rem', 
-              fontWeight: 600, 
-              color: '#64748b',
-              transition: 'opacity 0.2s ease',
-              opacity: isSearchExpanded ? 0 : 1,
-              visibility: isSearchExpanded ? 'hidden' : 'visible',
-              pointerEvents: isSearchExpanded ? 'none' : 'auto'
+              gap: '1rem', 
+              opacity: isSearchExpanded ? 1 : 0,
+              visibility: isSearchExpanded ? 'visible' : 'hidden',
+              transform: isSearchExpanded ? 'scaleY(1)' : 'scaleX(0.95)',
+              transformOrigin: 'bottom right',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              backgroundColor: 'white',
+              zIndex: 60
             }}>
-              <span onClick={() => handleNavigate('saved')} style={{ cursor: 'pointer', color: (currentView === 'saved' && !selectedJob) ? '#0f172a' : 'inherit' }}>Saved</span>
-              <button 
-                onClick={() => setIsSearchExpanded(true)} 
-                style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit', fontSize: 'inherit', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: 0 }}
-              >
-                <Search size={18} style={{ position: 'relative', top: '2px' }} /> Search
+              <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'baseline' }}>
+                <Search size={24} style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input 
+                  ref={searchInputRef}
+                  type="text" 
+                  placeholder="Search positions, companies..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Escape' && setIsSearchExpanded(false)}
+                  style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 3rem', border: 'none', borderBottom: '2px solid #0f172a', outline: 'none', fontSize: '1.5rem', fontWeight: 500, color: '#0f172a', backgroundColor: 'white' }}
+                />
+              </div>
+              <button onClick={() => { setSearchTerm(''); setIsSearchExpanded(false); }} style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b' }}>
+                <X size={24} />
               </button>
             </div>
-
-            {selectedJob && !isSearchExpanded && (
-              <ActionGroup job={selectedJob} onToggleSave={(e) => toggleSaveJob(selectedJob, e)} showBack onBack={handleBackToList} />
-            )}
-          </div>
-
-          {/* Expandable Search Overlay */}
-          <div style={{ 
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex', 
-            alignItems: 'baseline', 
-            gap: '1rem', 
-            opacity: isSearchExpanded ? 1 : 0,
-            visibility: isSearchExpanded ? 'visible' : 'hidden',
-            transform: isSearchExpanded ? 'scaleY(1)' : 'scaleX(0.95)',
-            transformOrigin: 'bottom right',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            backgroundColor: 'white',
-            zIndex: 60
-          }}>
-            <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'baseline' }}>
-              <Search size={24} style={{ position: 'absolute', left: '0', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-              <input 
-                ref={searchInputRef}
-                type="text" 
-                placeholder="Search positions, companies..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Escape' && setIsSearchExpanded(false)}
-                style={{ width: '100%', padding: '0.75rem 1rem 0.75rem 3rem', border: 'none', borderBottom: '2px solid #0f172a', outline: 'none', fontSize: '1.5rem', fontWeight: 500, color: '#0f172a', backgroundColor: 'white' }}
-              />
-            </div>
-            <button onClick={() => { setSearchTerm(''); setIsSearchExpanded(false); }} style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: '#64748b' }}>
-              <X size={24} />
-            </button>
           </div>
         </div>
       </header>
@@ -495,7 +503,7 @@ function App() {
                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Most Recent Postings</h2>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {recentJobs.map(job => <JobRow key={job.id} job={job} onClick={() => handleSelectJob(job)} onToggleSave={(e) => toggleSaveJob(job, e)} />)}
+                  {recentJobs.map(job => <JobRow key={job.id} job={job} onClick={() => handleSelectJob(job)} />)}
                 </div>
                 <button onClick={() => handleNavigate('jobs')} style={{ marginTop: '2rem', border: 'none', backgroundColor: 'transparent', color: '#2563eb', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem', padding: 0 }}>View all jobs →</button>
               </section>
@@ -505,7 +513,7 @@ function App() {
                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Closing Soon</h2>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {closingSoonJobs.map(job => <JobRow key={job.id} job={job} onClick={() => handleSelectJob(job)} onToggleSave={(e) => toggleSaveJob(job, e)} />)}
+                  {closingSoonJobs.map(job => <JobRow key={job.id} job={job} onClick={() => handleSelectJob(job)} />)}
                 </div>
               </section>
             </div>
@@ -527,7 +535,7 @@ function App() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {(currentView === 'jobs' || currentView === 'saved') ? (
-                    filteredJobs.map(job => <JobRow key={job.id} job={job} onClick={() => handleSelectJob(job)} onToggleSave={(e) => toggleSaveJob(job, e)} />)
+                    filteredJobs.map(job => <JobRow key={job.id} job={job} onClick={() => handleSelectJob(job)} />)
                   ) : (
                     companies.map(name => (
                       <div key={name} onClick={() => {setMinSalary(null); setSelectedModes([]); setClosingSoon(false); setSearchTerm(name); handleNavigate('jobs'); }} style={{ padding: '0.6rem 0', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
