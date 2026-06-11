@@ -87,9 +87,9 @@ const JobRow = ({ job, onClick, onToggleSave }: { job: Job, onClick: () => void,
     <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: '1rem' }}>
       <button 
         onClick={onToggleSave}
-        style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: job.is_saved ? '#0f172a' : '#cbd5e1', padding: 0, display: 'flex' }}
+        style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: job.is_saved ? '#2563eb' : '#cbd5e1', padding: 0, display: 'flex' }}
       >
-        <Bookmark size={16} fill={job.is_saved ? '#0f172a' : 'transparent'} />
+        <Bookmark size={16} fill={job.is_saved ? '#2563eb' : 'transparent'} />
       </button>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.1rem' }}>{job.job_title}</div>
@@ -156,12 +156,14 @@ function App() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [currentView, setCurrentView] = useState<View>('home');
   
+  // Advanced Filters
   const [minSalary, setMinSalary] = useState<number | null>(null);
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
   const [closingSoon, setClosingSoon] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync state with browser history
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
       const path = window.location.hash;
@@ -293,6 +295,7 @@ function App() {
       salary: extract('Salary Scale') || extract('Salary Range') || extract('Salary') || (job.salary_range !== 'null' ? job.salary_range : null),
       mode: normalizeMode(extract('Work Mode') || extract('Employment Type')),
       vacancies: extract('Number of Vacancies') || extract('No. of Vacancies') || extract('Vacancies'),
+      reqId: extract('Requisition ID') || extract('Job ID') || extract('Req ID'),
       future: desc.toLowerCase().includes('future requirements') ? 'Eligible for future requirements' : null,
       responsibilities: extractSection(['Major Responsibilities', 'Key Responsibilities', 'Responsibilities', 'What you will do']),
       qualifications: extractSection(['Key Qualifications', 'Skills and Qualifications', 'Qualifications', 'What you bring']),
@@ -376,7 +379,7 @@ function App() {
               <span onClick={() => handleNavigate('saved')} style={{ cursor: 'pointer', color: (currentView === 'saved' && !selectedJob) ? '#0f172a' : 'inherit' }}>Saved</span>
               <button 
                 onClick={() => setIsSearchExpanded(true)} 
-                style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit', fontSize: 'inherit', display: 'flex', alignItems: 'baseline', gap: '0.4rem', padding: 0 }}
+                style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit', fontSize: 'inherit', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: 0 }}
               >
                 <Search size={18} style={{ position: 'relative', top: '2px' }} /> Search
               </button>
@@ -442,6 +445,7 @@ function App() {
                   { label: 'Salary', val: currentJobDetails?.salary, icon: DollarSign },
                   { label: 'Work Mode', val: currentJobDetails?.mode, icon: Globe },
                   { label: 'Vacancies', val: currentJobDetails?.vacancies, icon: Users },
+                  { label: 'Req ID', val: currentJobDetails?.reqId, icon: Info },
                   { label: 'Eligibility', val: currentJobDetails?.future, icon: Zap, highlight: true }
                 ].filter(i => i.val).map(item => (
                   <div key={item.label}>

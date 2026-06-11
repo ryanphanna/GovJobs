@@ -8,25 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Homepage "Peek" view showing top 5 "Most Recent Postings" and "Closing Soon".
-- Unique internal ID routing with hash-based paths (`#job/{id}`, `#saved`, etc.).
-- Universal header baseline (bottom-justified) alignment for consistent typography.
-- Expandable search integration with smooth right-aligned transitions.
 - Standardized "ActionGroup" icons (Apply, Bookmark) consistent across list and detail views.
-- Local "Saved Jobs" (bookmarking) feature with persistent SQLite storage.
-- Advanced multi-dimension filtering (Salary, Work Mode, Deadline).
+- Automatic Title Case normalization for all-caps job titles (e.g., TTC roles).
+- Enhanced description parsing to strip leading punctuation and redundant metadata.
+- Structured detail panels for "Responsibilities" and "Qualifications" with improved typography.
+- Persistent baseline-aligned header layout for all navigation items.
 
 ### Changed
-- Refactored entire UI to high-density, horizontal lists (removed all cards and table headers).
-- Simplified "Jobs" and "Companies" views for faster scanning.
-- Unified sidebar positioning: All metadata moved to the left for layout stability.
-- Improved data normalization:
-  - Automatic Title Case conversion for all-caps titles.
-  - Stripped job codes, internal IDs, and "Job Opportunity" junk text.
-  - Vacancies are strictly numeric; Salary strings are cleaned of "Information:" suffixes.
-  - Description parsing improved to remove leading commas, periods, and redundant metadata.
-- Standardized terminology to "Companies" across the entire application.
+- Moved all job metadata (Salary, Mode, Vacancies, etc.) into a focused left sidebar.
 - Removed decorative icons from headers and panels for a more minimal, professional look.
+- Refactored list rows to a clean, border-bottom style without boxed containers.
+- Unified the "Apply" and "Bookmark" actions into a single group across the app.
+- Standardized terminology to "Companies" throughout the entire application.
 
 ### Fixed
 - Fixed persistent header baseline alignment for all navigation items.
