@@ -8,11 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- New **BambooHR** scraper support (migrated City of Hamilton to this platform).
+- New **Taleo** scraper support (added Town of Oakville).
+- Pagination support for **SuccessFactors** scrapers (now fetching 72+ City of Toronto jobs).
+- Sequential scraping logic with fresh browser pages per source to eliminate network cross-talk and "interrupted navigation" errors.
+- Intentional 1s delays between detail page requests to improve stability and avoid bot detection.
+- Detailed per-source and per-item logging for improved debugging of extraction failures.
+
+### Changed
+- Refactored Metrolinx scraper to target new **Oracle Cloud** portal (updated URL and selector strategy).
+- Updated SuccessFactors scrapers for Toronto, TTC, and Mississauga to use `career17` subdomains.
+- Standardized use of `textContent` and `Element` types across all scrapers for better cross-platform compatibility.
+- Improved Job ID extraction logic to handle various URL formats and strip query parameters.
+
+### Fixed
+- Fixed critical "Module Not Found" errors by removing incorrect `.js` extensions from TypeScript imports.
+- Fixed multiple TypeScript compilation errors (implicit 'any', possible null values in pagination).
+- Fixed launch timeouts by switching to non-headless browser mode in local environment.
+- Fixed Mississauga scraper picking up navigation links instead of job listings.
 - Standardized "ActionGroup" icons (Apply, Bookmark) consistent across list and detail views.
-- Automatic Title Case normalization for all-caps job titles (e.g., TTC roles).
-- Enhanced description parsing to strip leading punctuation and redundant metadata.
-- Structured detail panels for "Responsibilities" and "Qualifications" with improved typography.
-- Persistent baseline-aligned header layout for all navigation items.
 
 ### Changed
 - Moved all job metadata (Salary, Mode, Vacancies, etc.) into a focused left sidebar.
