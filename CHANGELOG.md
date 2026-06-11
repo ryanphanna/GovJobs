@@ -12,31 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unique internal ID routing with hash-based paths (`#job/{id}`, `#saved`, etc.).
 - Universal header baseline (bottom-justified) alignment for consistent typography.
 - Expandable search integration with smooth right-aligned transitions.
+- Standardized "ActionGroup" icons (Apply, Bookmark) consistent across list and detail views.
+- Local "Saved Jobs" (bookmarking) feature with persistent SQLite storage.
+- Advanced multi-dimension filtering (Salary, Work Mode, Deadline).
 
 ### Changed
-- Unified sidebar positioning: Moved job details metadata to the left for layout stability.
-- Improved header organization: Jobs/Companies on left, Saved/Search on right.
-- Refined navigation reset logic (clicking GovJobs returns to home).
-- Enhanced data normalization for TTC department strings and job titles.
-
-### Changed
-- Radical UI density pass:
-  - Surgically reduced whitespace, padding, and margins across the application.
-  - Ultra-compact list rows for maximum information density.
-  - Redesigned metadata grid in detail view for single-screen visibility.
-- Improved data extraction and normalization:
-  - Vacancies are now strictly numeric.
-  - Salary strings cleaned of "Information:" and other junk text.
-  - Normalization of "Work Mode" into friendly, consistent labels.
-- Moved primary "Apply" button higher in the job detail view for immediate access.
-
-### Changed
-- Refactored all grid/card layouts into high-density horizontal lists.
-- Unified the header and navigation menu across all application views.
-- Improved data normalization for titles, departments, and deadlines.
-- Optimized font scaling for professional information density.
+- Refactored entire UI to high-density, horizontal lists (removed all cards and table headers).
+- Simplified "Jobs" and "Companies" views for faster scanning.
+- Unified sidebar positioning: All metadata moved to the left for layout stability.
+- Improved data normalization:
+  - Automatic Title Case conversion for all-caps titles.
+  - Stripped job codes, internal IDs, and "Job Opportunity" junk text.
+  - Vacancies are strictly numeric; Salary strings are cleaned of "Information:" suffixes.
+  - Description parsing improved to remove leading commas, periods, and redundant metadata.
+- Standardized terminology to "Companies" across the entire application.
+- Removed decorative icons from headers and panels for a more minimal, professional look.
 
 ### Fixed
-- Fixed salary parsing to exclude "Information" and other trailing text.
-- Fixed search bar clipping and styling inconsistencies.
-- Corrected "General" department fallback display.
+- Fixed persistent header baseline alignment for all navigation items.
+- Fixed search bar clipping and "muddy" background issues.
+- Fixed filter reset logic to clear filters without navigating away from the current view.
+- Ensured `jobs.sqlite` is correctly ignored by git.

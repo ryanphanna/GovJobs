@@ -172,7 +172,16 @@ async function main() {
   // 3. TTC Interns
   await scrapeTTCInterns(page);
 
-  // 4. Waterfront
+  // 4. Metrolinx
+  await scrapeSuccessFactors(page, 'https://metrolinx.hcm.successfactors.com/career?company=metrolinx', 'Metrolinx', 'https://metrolinx.hcm.successfactors.com');
+
+  // 5. City of Hamilton
+  await scrapeSuccessFactors(page, 'https://hamilton.hcm.successfactors.com/career?company=cityofhami', 'City of Hamilton', 'https://hamilton.hcm.successfactors.com');
+
+  // 6. City of Mississauga
+  await scrapeSuccessFactors(page, 'https://career4.successfactors.com/career?company=cityofmiss', 'City of Mississauga', 'https://career4.successfactors.com');
+
+  // 7. Waterfront
   await scrapeWaterfront(page);
 
   console.log('Cleaning up expired jobs...');
