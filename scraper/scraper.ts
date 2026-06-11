@@ -432,12 +432,21 @@ async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, so
     ];
     let description = '';
     for (const sel of descSelectors) {
-      description = await page.$eval(sel, (el: Element) => (el as HTMLElement).textContent?.trim() || '').catch(() => '');
+      description = await page.$eval(sel, (el: Element) => {
+          const clone = el.cloneNode(true) as HTMLElement;
+          // Remove scripts, styles, and other metadata junk
+          clone.querySelectorAll('script, style, link, meta, noscript').forEach(e => e.remove());
+          return clone.innerHTML?.trim() || '';
+      }).catch(() => '');
       if (description) break;
     }
     
     if (!description) {
-      description = await page.$eval('main, #content, .content, article, #job-content, #wb-main', (el: Element) => (el as HTMLElement).textContent?.trim() || '').catch(() => '');
+      description = await page.$eval('main, #content, .content, article, #job-content, #wb-main', (el: Element) => {
+          const clone = el.cloneNode(true) as HTMLElement;
+          clone.querySelectorAll('script, style, link, meta, noscript').forEach(e => e.remove());
+          return clone.innerHTML?.trim() || '';
+      }).catch(() => '');
     }
 
     const department = await page.$eval('.job-department, .department, [class*="department"]', (el: Element) => (el as HTMLElement).textContent?.trim() || '').catch(() => job.department || '');

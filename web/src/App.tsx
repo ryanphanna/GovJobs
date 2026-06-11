@@ -495,7 +495,10 @@ function App() {
 
                 <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '2rem' }}>
                   <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>Full Description</div>
-                  <div style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#64748b', whiteSpace: 'pre-wrap' }}>{selectedJob.description}</div>
+                  <div 
+                    style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#64748b' }}
+                    dangerouslySetInnerHTML={{ __html: selectedJob.description }}
+                  />
                 </div>
               </div>
             </div>

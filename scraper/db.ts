@@ -76,8 +76,8 @@ export async function toggleSaveJob(db: Database, id: string) {
 }
 
 export async function cleanupExpiredJobs(db: Database) {
-  // Mark jobs as inactive if they weren't updated in the last 10 minutes (meaning the latest scrape run missed them)
+  // Mark jobs as inactive if they weren't updated in the last 2 hours (meaning the latest scrape run missed them)
   await db.run(
-    `UPDATE jobs SET is_active = 0 WHERE scraped_at < datetime('now', '-10 minutes')`
+    `UPDATE jobs SET is_active = 0 WHERE scraped_at < datetime('now', '-2 hours')`
   );
 }
