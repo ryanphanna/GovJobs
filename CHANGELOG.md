@@ -8,12 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- New **BambooHR** scraper support (migrated City of Hamilton to this platform).
-- New **Taleo** scraper support (added Town of Oakville).
+- New **Government of Canada (GC)** scraper support (federal jobs via PSC portal).
+- New **Province of Ontario (OPS)** scraper support (provincial jobs via gojobs portal).
+- New **Peel Region** scraper support (iCIMS portal).
+- New **City of Burlington** scraper support (Avanti portal).
+- Transitioned to **Soft-Delete** data retention: stale jobs are now marked as "Expired" rather than being deleted from the database.
+- New "Expired" UI status badge and dimmed styling for inactive job postings.
 - Pagination support for **SuccessFactors** scrapers (now fetching 72+ City of Toronto jobs).
 - Sequential scraping logic with fresh browser pages per source to eliminate network cross-talk and "interrupted navigation" errors.
 - Intentional 1s delays between detail page requests to improve stability and avoid bot detection.
 - Detailed per-source and per-item logging for improved debugging of extraction failures.
+- Automatic "Scroll to Bottom" logic before pagination checks to reveal hidden buttons.
+- Real-time progress tracking in console for long-running detail scraping tasks.
 
 ### Changed
 - Refactored Metrolinx scraper to target new **Oracle Cloud** portal (updated URL and selector strategy).

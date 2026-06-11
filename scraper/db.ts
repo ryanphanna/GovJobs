@@ -21,9 +21,20 @@ export async function initDb(): Promise<Database> {
       closing_date TEXT,
       url TEXT,
       source TEXT,
+      is_saved INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 1,
       scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Ensure columns exist (for migration)
+  const columns = await db.all('PRAGMA table_info(jobs)');
+  if (!columns.find(c => c.name === 'is_saved')) {
+    await db.exec('ALTER TABLE jobs ADD COLUMN is_saved INTEGER DEFAULT 0');
+  }
+  if (!columns.find(c => c.name === 'is_active')) {
+    await db.exec('ALTER TABLE jobs ADD COLUMN is_active INTEGER DEFAULT 1');
+  }
 
   return db;
 }
@@ -40,8 +51,8 @@ export async function saveJob(db: Database, job: {
   source: string;
 }) {
   await db.run(
-    `INSERT INTO jobs (id, job_title, department, location, salary_range, description, closing_date, url, source, scraped_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `INSERT INTO jobs (id, job_title, department, location, salary_range, description, closing_date, url, source, is_active, scraped_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
      ON CONFLICT(id) DO UPDATE SET
        job_title = excluded.job_title,
        department = excluded.department,
@@ -51,6 +62,7 @@ export async function saveJob(db: Database, job: {
        closing_date = excluded.closing_date,
        url = excluded.url,
        source = excluded.source,
+       is_active = 1,
        scraped_at = CURRENT_TIMESTAMP`,
     [job.id, job.job_title, job.department, job.location, job.salary_range, job.description, job.closing_date, job.url, job.source]
   );
@@ -64,9 +76,8 @@ export async function toggleSaveJob(db: Database, id: string) {
 }
 
 export async function cleanupExpiredJobs(db: Database) {
-  // Delete jobs that weren't updated in the last 10 minutes (meaning the latest scrape run missed them)
-  // AND are not explicitly saved by the user.
+  // Mark jobs as inactive if they weren't updated in the last 10 minutes (meaning the latest scrape run missed them)
   await db.run(
-    `DELETE FROM jobs WHERE is_saved = 0 AND scraped_at < datetime('now', '-10 minutes')`
+    `UPDATE jobs SET is_active = 0 WHERE scraped_at < datetime('now', '-10 minutes')`
   );
 }

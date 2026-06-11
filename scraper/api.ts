@@ -10,7 +10,8 @@ app.use(express.json());
 
 app.get('/api/jobs', async (req, res) => {
   const db = await initDb();
-  const jobs = await db.all('SELECT * FROM jobs ORDER BY scraped_at DESC');
+  // Return all jobs. Frontend can use is_active to show status.
+  const jobs = await db.all('SELECT * FROM jobs ORDER BY is_active DESC, scraped_at DESC');
   res.json(jobs);
 });
 

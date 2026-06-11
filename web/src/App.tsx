@@ -13,6 +13,7 @@ interface Job {
   source: string;
   scraped_at: string;
   is_saved: number;
+  is_active: number;
 }
 
 type View = 'home' | 'jobs' | 'saved' | 'companies';
@@ -79,13 +80,19 @@ const JobRow = ({ job, onClick }: { job: Job, onClick: () => void }) => (
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      gap: '2rem'
+      gap: '2rem',
+      opacity: job.is_active ? 1 : 0.6
     }}
-    onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
-    onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+    onMouseEnter={(e) => (e.currentTarget.style.opacity = job.is_active ? '0.7' : '0.4')}
+    onMouseLeave={(e) => (e.currentTarget.style.opacity = job.is_active ? '1' : '0.6')}
   >
     <div style={{ minWidth: 0, flex: 1 }}>
-      <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.1rem' }}>{job.job_title}</div>
+      <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#0f172a', marginBottom: '0.1rem' }}>
+        {job.job_title}
+        {!job.is_active && (
+          <span style={{ marginLeft: '0.6rem', fontSize: '0.6rem', padding: '0.1rem 0.4rem', backgroundColor: '#f1f5f9', color: '#94a3b8', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.025em', fontWeight: 800 }}>Expired</span>
+        )}
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
         <span style={{ color: '#0f172a', fontWeight: 600 }}>{job.source}</span>
         {job.department && <span>• {job.department}</span>}
