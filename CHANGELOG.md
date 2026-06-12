@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expanded municipal coverage: Added Markham, Richmond Hill, Whitby, Milton, Guelph, and Kitchener.
 - Total coverage expanded to **22 government job sources**.
 - Transitioned to **Soft-Delete** data retention: stale jobs are now marked as "Expired" rather than being deleted from the database.
+- Added **Inventory Job Filtering**: Ongoing recruitments and resume banks are now flagged in the database (`is_inventory`) and hidden by default in the UI to reduce feed clutter.
+- Added "Ongoing/Inventory" toggle to the UI filters sidebar and an "INVENTORY" badge to associated job rows.
 - New "Expired" UI status badge and dimmed styling for inactive job postings.
 - Pagination support for **SuccessFactors** scrapers (now fetching 72+ City of Toronto jobs).
 - Sequential scraping logic with fresh browser pages per source to eliminate network cross-talk and "interrupted navigation" errors.

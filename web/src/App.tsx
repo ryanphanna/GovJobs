@@ -14,6 +14,7 @@ interface Job {
   scraped_at: string;
   is_saved: number;
   is_active: number;
+  is_inventory: number;
 }
 
 type View = 'home' | 'jobs' | 'saved' | 'companies';
@@ -92,6 +93,9 @@ const JobRow = ({ job, onClick }: { job: Job, onClick: () => void }) => (
         {!job.is_active && (
           <span style={{ marginLeft: '0.6rem', fontSize: '0.6rem', padding: '0.1rem 0.4rem', backgroundColor: '#f1f5f9', color: '#94a3b8', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.025em', fontWeight: 800 }}>Expired</span>
         )}
+        {job.is_inventory === 1 && (
+          <span style={{ marginLeft: '0.6rem', fontSize: '0.6rem', padding: '0.1rem 0.4rem', backgroundColor: '#f0fdf4', color: '#0ea5e9', border: '1px solid #bae6fd', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.025em', fontWeight: 800 }}>Inventory</span>
+        )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
         <span style={{ color: '#0f172a', fontWeight: 600 }}>{job.source}</span>
@@ -159,6 +163,7 @@ function App() {
   const [minSalary, setMinSalary] = useState<number | null>(null);
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
   const [closingSoon, setClosingSoon] = useState(false);
+  const [showInventories, setShowInventories] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -305,6 +310,7 @@ function App() {
     let pool = jobs;
     if (currentView === 'saved') { pool = jobs.filter(j => j.is_saved); }
     return pool.filter(job => {
+      if (!showInventories && job.is_inventory) return false;
       const matchesSearch = job.job_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            job.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            job.source.toLowerCase().includes(searchTerm.toLowerCase());
@@ -536,7 +542,8 @@ function App() {
                 <FilterSection title="Salary Min">{[50000, 75000, 100000, 125000].map(val => (<FilterButton key={val} label={`$${val/1000}k+`} active={minSalary === val} onClick={() => setMinSalary(minSalary === val ? null : val)} />))}</FilterSection>
                 <FilterSection title="Work Mode">{['In-person', 'Hybrid', 'Remote'].map(mode => (<FilterButton key={mode} label={mode} active={selectedModes.includes(mode)} onClick={() => setSelectedModes(prev => prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode])} />))}</FilterSection>
                 <FilterSection title="Deadline"><FilterButton label="Closing soon" active={closingSoon} onClick={() => setClosingSoon(!closingSoon)} /></FilterSection>
-                <div style={{ marginTop: '1.5rem' }}><button onClick={reset} style={{ width: '100%', padding: '0.4rem', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: 'transparent', color: '#64748b', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>Reset filters</button></div>
+                <FilterSection title="Job Type"><FilterButton label="Ongoing/Inventory" active={showInventories} onClick={() => setShowInventories(!showInventories)} /></FilterSection>
+                <div style={{ marginTop: '1.5rem' }}><button onClick={() => {reset(); setShowInventories(false);}} style={{ width: '100%', padding: '0.4rem', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: 'transparent', color: '#64748b', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer' }}>Reset filters</button></div>
               </aside>
 
               <div style={{ minWidth: 0 }}>

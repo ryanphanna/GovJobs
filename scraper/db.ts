@@ -36,6 +36,10 @@ export async function initDb(): Promise<Database> {
     await db.exec('ALTER TABLE jobs ADD COLUMN is_active INTEGER DEFAULT 1');
   }
 
+  if (!columns.find(c => c.name === 'is_inventory')) {
+    await db.exec('ALTER TABLE jobs ADD COLUMN is_inventory INTEGER DEFAULT 0');
+  }
+
   return db;
 }
 
@@ -50,9 +54,11 @@ export async function saveJob(db: Database, job: {
   url: string;
   source: string;
 }) {
+  const isInventory = /inventory|ongoing|continuous|roster|pool/i.test(job.job_title) ? 1 : 0;
+
   await db.run(
-    `INSERT INTO jobs (id, job_title, department, location, salary_range, description, closing_date, url, source, is_active, scraped_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+    `INSERT INTO jobs (id, job_title, department, location, salary_range, description, closing_date, url, source, is_active, is_inventory, scraped_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(id) DO UPDATE SET
        job_title = excluded.job_title,
        department = excluded.department,
@@ -63,8 +69,9 @@ export async function saveJob(db: Database, job: {
        url = excluded.url,
        source = excluded.source,
        is_active = 1,
+       is_inventory = excluded.is_inventory,
        scraped_at = CURRENT_TIMESTAMP`,
-    [job.id, job.job_title, job.department, job.location, job.salary_range, job.description, job.closing_date, job.url, job.source]
+    [job.id, job.job_title, job.department, job.location, job.salary_range, job.description, job.closing_date, job.url, job.source, isInventory]
   );
 }
 
