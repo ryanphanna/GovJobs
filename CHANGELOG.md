@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed multiple TypeScript compilation errors (implicit 'any', possible null values in pagination).
 - Fixed launch timeouts by switching to non-headless browser mode in local environment.
 - Fixed Mississauga scraper picking up navigation links instead of job listings.
+- Fixed York Region (HRSmart) pagination to capture all available listings across multiple pages.
 - Fixed job detail rendering to support HTML descriptions (removed raw tag display).
 - Fixed premature job expiration by increasing the freshness window from 10 minutes to 2 hours.
 - Improved description parsing to strip hidden JSON metadata and script tags from portals like BambooHR.

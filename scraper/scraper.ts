@@ -33,6 +33,14 @@ async function scrapeSuccessFactors(context: BrowserContext, url: string, source
       }
     }
 
+    // --- TRICK: Set items per page to 100 ---
+    const pageSizeSelect = await page.$('select[aria-label*="items per page"], select.joqReqPageSize, select[id*="pageSize"]');
+    if (pageSizeSelect) {
+        console.log(`[${sourceName}] Setting page size to 100...`);
+        await pageSizeSelect.selectOption('100').catch(() => {});
+        await page.waitForTimeout(7000);
+    }
+
     let hasNextPage = true;
     let pageNum = 1;
 
@@ -129,46 +137,70 @@ async function scrapeOPS(context: BrowserContext) {
   console.log(`Scraping ${sourceName} (OPS)...`);
   const page = await context.newPage();
   try {
-    // Start at a splash/search page to establish session
     await page.goto('https://www.gojobs.gov.on.ca/Search.aspx', { waitUntil: 'networkidle' });
-    
-    // Explicitly click search to trigger POST/session
+    await page.waitForTimeout(3000);
+
+    // --- TRICK: Type a space into keywords to trigger session events ---
+    const searchInput = await page.$('input[type="text"]');
+    if (searchInput) {
+        await searchInput.type(' ', { delay: 100 });
+    }
+
     const btn = await page.$('#btnSearch');
     if (btn) {
-      console.log(`[${sourceName}] Clicking primary search...`);
+      console.log(`[${sourceName}] Clicking search button...`);
       await btn.click();
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(5000);
     }
 
-    const summaries = await page.evaluate(() => {
-      const table = document.querySelector('#dgSearchResults');
-      if (!table) return [];
-      const rows = Array.from(table.querySelectorAll('tr')).slice(1);
-      return rows.map(row => {
-        const titleLink = row.querySelector('a');
-        if (!titleLink) return null;
-        const title = titleLink.textContent?.trim() || '';
-        const url = (titleLink as HTMLAnchorElement).href;
-        const dept = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
-        const loc = row.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
-        const close = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
-        if (!title || !url || url.includes('javascript:')) return null;
-        return { title, url, department: dept, location: loc, closingDate: close };
-      }).filter(Boolean) as JobSummary[];
-    });
+    let hasNextPage = true;
+    let pageNum = 1;
 
-    console.log(`[${sourceName}] Found ${summaries.length} potential jobs`);
+    while (hasNextPage) {
+        console.log(`[${sourceName}] Scraping page ${pageNum}...`);
+        const summaries = await page.evaluate(() => {
+          const table = document.querySelector('#dgSearchResults');
+          if (!table) return [];
+          const rows = Array.from(table.querySelectorAll('tr')).slice(1);
+          const dataRows = rows.filter(r => r.querySelectorAll('td').length > 3);
+          return dataRows.map(row => {
+            const titleLink = row.querySelector('a');
+            if (!titleLink) return null;
+            const title = titleLink.textContent?.trim() || '';
+            const url = (titleLink as HTMLAnchorElement).href;
+            const dept = row.querySelector('td:nth-child(2)')?.textContent?.trim() || '';
+            const loc = row.querySelector('td:nth-child(3)')?.textContent?.trim() || '';
+            const close = row.querySelector('td:nth-child(4)')?.textContent?.trim() || '';
+            if (!title || !url || url.includes('javascript:')) return null;
+            return { title, url, department: dept, location: loc, closingDate: close };
+          }).filter(Boolean) as JobSummary[];
+        });
 
-    let count = 0;
-    for (const job of summaries) {
-      count++;
-      job.id = new URL(job.url).searchParams.get('JobID') || job.title;
-      process.stdout.write(`\r[${sourceName}] Scraping details: ${count}/${summaries.length} - ${job.title.substring(0, 30)}...`);
-      await scrapeDetailsAndSave(context, job, sourceName);
-      await new Promise(r => setTimeout(r, 1000));
+        console.log(`[${sourceName}] Found ${summaries.length} jobs on page ${pageNum}`);
+
+        let count = 0;
+        for (const job of summaries) {
+          count++;
+          job.id = new URL(job.url).searchParams.get('JobID') || job.title;
+          process.stdout.write(`\r[${sourceName}] Scraping details: ${count}/${summaries.length} - ${job.title.substring(0, 30)}...`);
+          await scrapeDetailsAndSave(context, job, sourceName);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
+
+        const nextLink = await page.$('#dgSearchResults tr:last-child a:has-text("Next")');
+        if (nextLink) {
+            console.log(`[${sourceName}] Clicking next page...`);
+            await nextLink.click();
+            await page.waitForLoadState('networkidle');
+            await page.waitForTimeout(7000);
+            pageNum++;
+            if (pageNum > 10) break;
+        } else {
+            hasNextPage = false;
+        }
     }
-    console.log(`\n[${sourceName}] Finished scraping ${summaries.length} details.`);
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
   } finally {
@@ -181,45 +213,55 @@ async function scrapeGC(context: BrowserContext) {
   console.log(`Scraping ${sourceName} (GC)...`);
   const page = await context.newPage();
   try {
-    // Federal jobs need specific navigation to stick the session
-    await page.goto('https://emploisfp-psjobs.cfp-psc.gc.ca/psrs-srfp/rechercherSearch.do?action=search&lang=en', { waitUntil: 'networkidle' });
+    await page.goto('https://emploisfp-psjobs.cfp-psc.gc.ca/psrs-srfp/applicant/page2440?fromMenu=true&toggleLanguage=en', { waitUntil: 'networkidle' });
+    await page.waitForTimeout(5000);
     
-    // Attempt to click "Search jobs" to reveal full table
-    const searchBtn = await page.$('input[value="Search jobs"], button:has-text("Search jobs"), input#btnSearch');
-    if (searchBtn) {
-        console.log(`[${sourceName}] Triggering search...`);
-        await searchBtn.click();
-        await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(7000);
+    let hasNextPage = true;
+    let pageNum = 1;
+
+    while (hasNextPage) {
+        console.log(`[${sourceName}] Scraping page ${pageNum}...`);
+        const summaries = await page.evaluate(() => {
+            const links = Array.from(document.querySelectorAll('a[href*="poster="]'));
+            return links.map(l => {
+                const title = l.textContent?.trim() || '';
+                const href = (l as HTMLAnchorElement).href;
+                const row = l.closest('li') || l.closest('tr') || l.parentElement;
+                
+                const text = row?.textContent || '';
+                const closeMatch = text.match(/Closing date:\s*([\d-]+)/);
+                const close = closeMatch ? closeMatch[1] : '';
+                
+                if (!title || !href || title.length < 3) return null;
+                return { title, url: href, closingDate: close };
+            }).filter(Boolean) as JobSummary[];
+        });
+
+        console.log(`[${sourceName}] Found ${summaries.length} jobs on page ${pageNum}`);
+
+        let count = 0;
+        for (const job of summaries) {
+          count++;
+          const urlObj = new URL(job.url);
+          job.id = urlObj.searchParams.get('poster') || job.title;
+          process.stdout.write(`\r[${sourceName}] Scraping details: ${count}/${summaries.length} - ${job.title.substring(0, 30)}...`);
+          await scrapeDetailsAndSave(context, job, sourceName);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
+
+        const nextLink = await page.$(`a[href*="requestedPage=${pageNum + 1}"]`);
+        if (nextLink) {
+            console.log(`[${sourceName}] Clicking next page (${pageNum + 1})...`);
+            await nextLink.click();
+            await page.waitForLoadState('networkidle');
+            await page.waitForTimeout(7000);
+            pageNum++;
+            if (pageNum > 20) break;
+        } else {
+            hasNextPage = false;
+        }
     }
-
-    const summaries = await page.evaluate(() => {
-        const links = Array.from(document.querySelectorAll('a[href*="poster.htm"]'));
-        return links.map(l => {
-            const row = l.closest('tr');
-            const title = l.textContent?.trim() || '';
-            const href = (l as HTMLAnchorElement).href;
-            const cells = Array.from(row?.querySelectorAll('td') || []);
-            const dept = cells[1]?.textContent?.trim() || '';
-            const loc = cells[2]?.textContent?.trim() || '';
-            const close = cells[3]?.textContent?.trim() || '';
-            if (!title || !href) return null;
-            return { title, url: href, department: dept, location: loc, closingDate: close };
-        }).filter(Boolean) as JobSummary[];
-    });
-
-    console.log(`[${sourceName}] Found ${summaries.length} potential jobs`);
-
-    let count = 0;
-    for (const job of summaries) {
-      count++;
-      const urlObj = new URL(job.url);
-      job.id = urlObj.searchParams.get('jobRequisitionId') || urlObj.searchParams.get('poster') || job.title;
-      process.stdout.write(`\r[${sourceName}] Scraping details: ${count}/${summaries.length} - ${job.title.substring(0, 30)}...`);
-      await scrapeDetailsAndSave(context, job, sourceName);
-      await new Promise(r => setTimeout(r, 1000));
-    }
-    console.log(`\n[${sourceName}] Finished scraping ${summaries.length} details.`);
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
   } finally {
@@ -253,8 +295,6 @@ async function scrapeOracleCloud(context: BrowserContext, url: string, sourceNam
       await scrapeDetailsAndSave(context, { id, title: job.title, url: job.url }, sourceName);
       await new Promise(r => setTimeout(r, 1000));
     }
-    
-    if (summaries.length === 0) console.log(`[${sourceName}] No jobs parsed.`);
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
   } finally {
@@ -313,6 +353,96 @@ async function scrapeNjoyn(context: BrowserContext, url: string, sourceName: str
     for (const job of summaries) {
       const id = new URL(job.url).searchParams.get('jobid') || job.url.split('/').filter(Boolean).pop() || job.title;
       await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeHRSmart(context: BrowserContext, url: string, sourceName: string) {
+  console.log(`Scraping ${sourceName} (HRSmart)...`);
+  const page = await context.newPage();
+  try {
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(7000);
+
+    let hasNextPage = true;
+    let pageNum = 1;
+
+    while (hasNextPage) {
+        console.log(`[${sourceName}] Scraping page ${pageNum}...`);
+        
+        const summaries = await page.evaluate(() => {
+            const links = Array.from(document.querySelectorAll('a[href*="/hr/ats/Posting/view/"]'));
+            return links.map(l => {
+                const title = l.textContent?.trim() || '';
+                const href = (l as HTMLAnchorElement).href;
+                if (!title || !href || title.toLowerCase().includes('view details') || title.match(/^\d+$/) || title.toLowerCase().includes('view all jobs') || title.includes('»') || title.includes('«')) return null;
+                return { title, url: href };
+            }).filter(Boolean) as { title: string, url: string }[];
+        });
+
+        console.log(`[${sourceName}] Found ${summaries.length} potential jobs on page ${pageNum}`);
+        
+        let count = 0;
+        for (const job of summaries) {
+          count++;
+          const id = job.url.split('/').filter(Boolean).pop() || job.title;
+          process.stdout.write(`\r[${sourceName}] Scraping details: ${count}/${summaries.length} - ${job.title.substring(0, 30)}...`);
+          await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
+          await new Promise(r => setTimeout(r, 1000));
+        }
+        console.log(`\n[${sourceName}] Finished scraping page ${pageNum}.`);
+
+        // Check for Next button (usually an a tag with text '»' or 'Next')
+        const nextBtn = await page.$('a.paginateNext, a:has-text("»"), a.next, a[rel="next"]');
+        if (nextBtn) {
+            const isDisabled = await nextBtn.evaluate(el => el.parentElement?.classList.contains('disabled'));
+            if (!isDisabled) {
+                console.log(`[${sourceName}] Clicking next page...`);
+                await nextBtn.click();
+                await page.waitForLoadState('networkidle');
+                await page.waitForTimeout(5000);
+                pageNum++;
+                if (pageNum > 10) break;
+            } else {
+                hasNextPage = false;
+            }
+        } else {
+            hasNextPage = false;
+        }
+    }
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeBambooHR(context: BrowserContext, url: string, sourceName: string) {
+  console.log(`Scraping ${sourceName} (BambooHR)...`);
+  const page = await context.newPage();
+  try {
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(10000);
+
+    const jobs = await page.$$eval('a', (as) => as
+      .filter(a => (a as HTMLAnchorElement).href.includes('/jobs/view.php') || (a as HTMLAnchorElement).href.includes('/careers/'))
+      .map(a => ({
+        title: a.textContent?.trim() || '',
+        url: (a as HTMLAnchorElement).href
+      }))
+    );
+
+    const validJobs = jobs.filter(j => j.title.length > 3 && !j.title.toLowerCase().includes('view all'));
+    console.log(`[${sourceName}] Found ${validJobs.length} potential jobs`);
+    for (const job of validJobs) {
+      console.log(`[${sourceName}] Found job: ${job.title}`);
+      const id = new URL(job.url).searchParams.get('id') || job.url.split('/').filter(Boolean).pop() || job.title;
+      await scrapeDetailsAndSave(context, { id, title: job.title, url: job.url }, sourceName);
       await new Promise(r => setTimeout(r, 1000));
     }
   } catch (err: any) {
@@ -422,19 +552,29 @@ async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, so
     await page.goto(job.url, { waitUntil: 'networkidle', timeout: 30000 });
     await page.waitForTimeout(3000);
     
+    // Handle "Leaving the GC Jobs" warning page
+    if (page.url().includes('quitter-leave')) {
+        const continueBtn = await page.$('input[value="Continue"], button:has-text("Continue"), a:has-text("Continue")');
+        if (continueBtn) {
+            await continueBtn.click();
+            await page.waitForLoadState('networkidle');
+            await page.waitForTimeout(3000);
+        }
+    }
+
     const descSelectors = [
       '.jobdescription', '.joqReqDescription', '.description', 
       '#job-details', '.job-info', '.job-content', '.field-name-body', 
       '.BambooHR-ATS-Job-Details', '[class*="JobRequisitionDetails"]',
       '.job-details', '.job-detail', '.description-content', '.job-posting',
       '#ops-job-details', '.ops-description', '#gc-job-poster', '.avanti-job-details',
-      '.iCIMS_JobDescription', '#workday-job-description', '.job-description'
+      '.iCIMS_JobDescription', '#workday-job-description', '.job-description', '.job_description'
     ];
+    
     let description = '';
     for (const sel of descSelectors) {
       description = await page.$eval(sel, (el: Element) => {
           const clone = el.cloneNode(true) as HTMLElement;
-          // Remove scripts, styles, and other metadata junk
           clone.querySelectorAll('script, style, link, meta, noscript').forEach(e => e.remove());
           return clone.innerHTML?.trim() || '';
       }).catch(() => '');
@@ -520,36 +660,25 @@ async function main() {
   console.log('Creating browser context...');
   const context = await browser.newContext(BASE_CONFIG);
 
-  // 1. Federal & Provincial
+  // --- BETA RUN: Problematic Sources First ---
+  console.log('--- STARTING BETA RUN ---');
+  
+  // 1. Federal (Multi-page + External Handling)
   await scrapeGC(context);
+  
+  // 2. Provincial (Multi-page)
   await scrapeOPS(context);
-
-  // 2. Regional GTHA
-  await scrapeSuccessFactors(context, 'https://career4.successfactors.com/career?company=yorkregion', 'York Region', 'https://career4.successfactors.com');
+  
+  // 3. Metrolinx (Oracle Cloud)
+  await scrapeOracleCloud(context, 'https://ehtc.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?mode=location', 'Metrolinx');
+  
+  // 4. Regional GTHA (SuccessFactors/iCIMS)
+  await scrapeHRSmart(context, 'https://york.hua.hrsmart.com/hr/ats/JobSearch/viewAll', 'York Region');
   await scrapeSuccessFactors(context, 'https://careers.halton.ca/search/', 'Halton Region', 'https://careers.halton.ca');
   await scrapeICIMS(context, 'https://careers-peelregion.icims.com/jobs/search?ss=1', 'Peel Region');
-  
-  // 3. Core Cities
-  await scrapeSuccessFactors(context, 'https://jobs.toronto.ca/jobsatcity/search/', 'City of Toronto', 'https://jobs.toronto.ca');
-  await scrapeSuccessFactors(context, 'https://career17.sapsf.com/career?company=TTCPRODUCTION', 'TTC', 'https://career17.sapsf.com');
-  await scrapeTTCInterns(context);
-  await scrapeOracleCloud(context, 'https://ehtc.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?mode=location', 'Metrolinx');
-  await scrapeBambooHR(context, 'https://cityofhamilton.bamboohr.com/careers', 'City of Hamilton');
-  await scrapeSuccessFactors(context, 'https://career17.sapsf.com/career?company=cityofmiss', 'City of Mississauga', 'https://career17.sapsf.com');
-  
-  // 4. Expanded Cities
-  await scrapeWorkday(context, 'https://brampton.wd3.myworkdayjobs.com/CityofBramptonCareers', 'City of Brampton');
-  await scrapeNjoyn(context, 'https://vaughan.njoyn.com/CL4/xweb/xweb.asp?tbtoken=Z19dRBYXCBp2Y3FzR1ZfCFU%2Bdm9daVdcB0gjU1p%2FE2ZfL0YfX0YbeR9wcBAbExZTSXdhX3Y%3D&chk=ZVpaShM%3D&page=joblisting', 'City of Vaughan');
-  await scrapeSuccessFactors(context, 'https://career17.sapsf.com/career?company=cityofmark', 'City of Markham', 'https://career17.sapsf.com');
-  await scrapeNjoyn(context, 'https://oshawa.njoyn.com/', 'City of Oshawa');
-  await scrapeWorkday(context, 'https://townofajax.myworkdayjobs.com/AjaxCareers', 'Town of Ajax');
-  await scrapeICIMS(context, 'https://guelph.icims.com/jobs/search?ss=1', 'City of Guelph');
-  await scrapeOracleCloud(context, 'https://eeid.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1', 'City of Richmond Hill');
-  await scrapeAvanti(context, 'https://whitby.avanti-atms.com/ExternalCareerSite/', 'Town of Whitby');
-  await scrapeAvanti(context, 'https://milton.avanti-atms.com/ExternalCareerSite/', 'Town of Milton');
-  await scrapeTaleo(context, 'https://tre.tbe.taleo.net/tre01/ats/careers/v2/searchResults?org=TOWNOFOA&cws=43', 'Town of Oakville');
-  await scrapeWaterfront(context);
 
+  // --- END OF BETA ---
+  
   console.log('Cleaning up expired jobs...');
   await cleanupExpiredJobs(await initDb());
 
