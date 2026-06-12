@@ -582,7 +582,7 @@ async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, so
     }
     
     if (!description) {
-      description = await page.$eval('main, #content, .content, article, #job-content, #wb-main', (el: Element) => {
+      description = await page.$eval('main, #content, .content, article, #job-content, #wb-main, #ats_content', (el: Element) => {
           const clone = el.cloneNode(true) as HTMLElement;
           clone.querySelectorAll('script, style, link, meta, noscript').forEach(e => e.remove());
           return clone.innerHTML?.trim() || '';

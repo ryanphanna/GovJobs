@@ -15,6 +15,7 @@ interface Job {
   is_saved: number;
   is_active: number;
   is_inventory: number;
+  is_student: number;
 }
 
 type View = 'home' | 'jobs' | 'saved' | 'companies';
@@ -95,6 +96,9 @@ const JobRow = ({ job, onClick }: { job: Job, onClick: () => void }) => (
         )}
         {job.is_inventory === 1 && (
           <span style={{ marginLeft: '0.6rem', fontSize: '0.6rem', padding: '0.1rem 0.4rem', backgroundColor: '#f0fdf4', color: '#0ea5e9', border: '1px solid #bae6fd', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.025em', fontWeight: 800 }}>Inventory</span>
+        )}
+        {job.is_student === 1 && (
+          <span style={{ marginLeft: '0.6rem', fontSize: '0.6rem', padding: '0.1rem 0.4rem', backgroundColor: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.025em', fontWeight: 800 }}>Student/Co-op</span>
         )}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem', color: '#64748b' }}>
@@ -285,9 +289,11 @@ function App() {
     };
 
     const extractSection = (keywords: string[]) => {
+      // Strip HTML tags for clean regex parsing
+      const cleanDesc = desc.replace(/<[^>]*>?/gm, ' ');
       for (const keyword of keywords) {
         const regex = new RegExp(`${keyword}:?\\s*([\\s\\S]*?)(?=\\n\\n|\\n[A-Z][a-z]|$)`, 'i');
-        const match = desc.match(regex);
+        const match = cleanDesc.match(regex);
         if (match && match[1].trim().length > 20) {
            return match[1].trim().replace(/^[,.\s]+/, '');
         }

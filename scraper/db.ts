@@ -39,6 +39,9 @@ export async function initDb(): Promise<Database> {
   if (!columns.find(c => c.name === 'is_inventory')) {
     await db.exec('ALTER TABLE jobs ADD COLUMN is_inventory INTEGER DEFAULT 0');
   }
+  if (!columns.find(c => c.name === 'is_student')) {
+    await db.exec('ALTER TABLE jobs ADD COLUMN is_student INTEGER DEFAULT 0');
+  }
 
   return db;
 }
@@ -55,10 +58,20 @@ export async function saveJob(db: Database, job: {
   source: string;
 }) {
   const isInventory = /inventory|ongoing|continuous|roster|pool/i.test(job.job_title) ? 1 : 0;
+  const isStudent = /student|co-op|coop|intern|summer|early talent|articling/i.test(job.job_title) ? 1 : 0;
+  
+  const cleanTitle = job.job_title
+    .replace(/\s*-\s*INVENTORY\b/i, '')
+    .replace(/\bINVENTORY\b\s*-\s*/i, '')
+    .replace(/\(?Inventory\)?/i, '')
+    .replace(/Ongoing Student Recruitment/i, 'Student Recruitment')
+    .replace(/\s*-\s*Ongoing.*Opportunities\b/i, '')
+    .replace(/\s*-\s*Anticipatory.*Staffing\b/i, '')
+    .trim();
 
   await db.run(
-    `INSERT INTO jobs (id, job_title, department, location, salary_range, description, closing_date, url, source, is_active, is_inventory, scraped_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, CURRENT_TIMESTAMP)
+    `INSERT INTO jobs (id, job_title, department, location, salary_range, description, closing_date, url, source, is_active, is_inventory, is_student, scraped_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(id) DO UPDATE SET
        job_title = excluded.job_title,
        department = excluded.department,
@@ -70,8 +83,9 @@ export async function saveJob(db: Database, job: {
        source = excluded.source,
        is_active = 1,
        is_inventory = excluded.is_inventory,
+       is_student = excluded.is_student,
        scraped_at = CURRENT_TIMESTAMP`,
-    [job.id, job.job_title, job.department, job.location, job.salary_range, job.description, job.closing_date, job.url, job.source, isInventory]
+    [job.id, cleanTitle, job.department, job.location, job.salary_range, job.description, job.closing_date, job.url, job.source, isInventory, isStudent]
   );
 }
 
