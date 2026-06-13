@@ -43,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed job detail rendering to support HTML descriptions (removed raw tag display).
 - Fixed premature job expiration by increasing the freshness window from 10 minutes to 2 hours.
 - Improved description parsing to strip hidden JSON metadata and script tags from portals like BambooHR.
+- Fixed UI parsing bug where "Vacancies" would sometimes extract a full sentence with HTML tags; it is now strictly numeric or hidden.
 - Standardized "ActionGroup" icons (Apply, Bookmark) consistent across list and detail views.
 
 ### Changed

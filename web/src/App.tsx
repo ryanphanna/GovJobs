@@ -272,8 +272,10 @@ function App() {
 
   const parseJobDetails = (job: Job) => {
     const desc = job.description;
+    const cleanDesc = desc.replace(/<[^>]*>?/gm, ' ');
+
     const extract = (key: string) => {
-      const match = desc.match(new RegExp(`${key}:?\\s*([^\\n\\r]*)`, 'i'));
+      const match = cleanDesc.match(new RegExp(`${key}:?\\s*([^\\n\\r]*)`, 'i'));
       let val = match ? match[1]?.trim() : null;
       if (val) {
         val = val.replace(/^[,.\s]+/, '');
@@ -282,15 +284,13 @@ function App() {
         }
         if (key.toLowerCase().includes('vacancies')) {
            const numMatch = val.match(/\d+/);
-           val = numMatch ? numMatch[0] : val;
+           val = numMatch ? numMatch[0] : null; // Only return if numeric
         }
       }
       return val;
     };
 
     const extractSection = (keywords: string[]) => {
-      // Strip HTML tags for clean regex parsing
-      const cleanDesc = desc.replace(/<[^>]*>?/gm, ' ');
       for (const keyword of keywords) {
         const regex = new RegExp(`${keyword}:?\\s*([\\s\\S]*?)(?=\\n\\n|\\n[A-Z][a-z]|$)`, 'i');
         const match = cleanDesc.match(regex);
