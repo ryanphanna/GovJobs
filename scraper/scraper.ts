@@ -574,33 +574,29 @@ async function main() {
   const context = await browser.newContext(BASE_CONFIG);
   const db = await initDb();
 
-  console.log('--- STARTING SCRAPE RUN ---');
+  console.log('--- STARTING TORONTO SCRAPE RUN ---');
 
-  // 1. Federal & Provincial
-  await scrapeGC(db, context);
-  await scrapeOPS(db, context);
-
-  // 2. High Value Agencies
-  await scrapeOracleCloud(db, context, 'https://ehtc.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?mode=location', 'Metrolinx');
+  // 1. Core Toronto Agencies
   await scrapeSuccessFactors(db, context, 'https://career17.sapsf.com/careers?company=TTC', 'TTC', 'https://career17.sapsf.com');
   await scrapeSuccessFactors(db, context, 'https://jobs.toronto.ca/jobsatcity/', 'City of Toronto', 'https://jobs.toronto.ca');
+  await scrapeOracleCloud(db, context, 'https://ehtc.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?mode=location', 'Metrolinx');
 
-  // 3. Regional GTHA
+  // 2. Libraries & Specialized
+  await scrapeNjoyn(db, context, 'https://tpl.njoyn.com/CL/xweb/xweb.asp?page=joblisting&CLID=124455', 'Toronto Public Library');
+  await scrapeWaterfront(db, context);
+
+  /* 
+  // Future Expansion (Non-Toronto specific)
+  await scrapeGC(db, context);
+  await scrapeOPS(db, context);
   await scrapeHRSmart(db, context, 'https://york.hua.hrsmart.com/hr/ats/JobSearch/viewAll', 'York Region');
   await scrapeICIMS(db, context, 'https://careers-peelregion.icims.com/jobs/search?ss=1', 'Peel Region');
   await scrapeSuccessFactors(db, context, 'https://careers.halton.ca/search/', 'Halton Region', 'https://careers.halton.ca');
   await scrapeSuccessFactors(db, context, 'https://jobs.mississauga.ca/search/', 'Mississauga', 'https://jobs.mississauga.ca');
-
-  // 4. Municipalities (Workday/Njoyn)
   await scrapeWorkday(db, context, 'https://brampton.wd3.myworkdayjobs.com/Brampton_External_Careers', 'City of Brampton');
   await scrapeNjoyn(db, context, 'https://vaughan.njoyn.com/cl4/xweb/xweb.asp?tbtoken=ZlpRRhcXCB8GYwF0NyVccitLdGZfcVVMf0gjV1oMExdbW0UZXUcbBhdxcBEbURRTSXUuX30%3D&chk=ZVpaShM%3D&CLID=52423&page=joblisting', 'City of Vaughan');
-
-  // 5. Libraries
-  await scrapeNjoyn(db, context, 'https://tpl.njoyn.com/CL/xweb/xweb.asp?page=joblisting&CLID=124455', 'Toronto Public Library');
   await scrapePJB(db, context);
-
-  // 6. Specialized
-  await scrapeWaterfront(db, context);
+  */
 
   console.log('\nCleaning up expired jobs...');
   await cleanupExpiredJobs(db, runStartedAt);
