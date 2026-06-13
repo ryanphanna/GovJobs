@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replaced `Math.random()` job ID fallback in SuccessFactors scraper with a deterministic SHA-256 URL hash (`urlId`), preventing duplicate DB rows on re-runs (Linear: AI-29)
 - Hardened `job.title` ID fallbacks in all other scrapers (OPS, GC, Oracle, Workday, Njoyn, HRSmart, iCIMS, Waterfront) with the same URL hash to prevent title-collision duplicates
 - Initialized DB once in `main()` and threaded the handle through all scraper functions, eliminating 200+ redundant `initDb()` calls per run; same fix applied to `api.ts` (Linear: AI-30)
+- Replaced silent catch in `scrapeDetailsAndSave` with a `console.warn` so scraping failures are now visible in the console (Linear: AI-34)
+- `reset()` now clears the inventory toggle, making logo-click and the Reset button consistent (Linear: AI-36)
+- Wrapped `jobsByCompany` and `companies` in `useMemo` to avoid recomputing on every render (Linear: AI-38)
+- API base URL extracted to `VITE_API_URL` env variable with `localhost:3001` fallback (Linear: AI-39)
 
 ### Added
 - **DeepSeek AI-Powered Parsing**: Migrated from fragile CSS/Regex parsing to an LLM-driven architecture using DeepSeek V3.

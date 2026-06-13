@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 import { Search, MapPin, Building, Calendar, ExternalLink, Briefcase, LayoutGrid, Building2, ChevronRight, X, DollarSign, Clock, ArrowLeft, Users, Zap, Globe, Filter, ListChecks, Target, Info, ChevronDown, ChevronUp, Bookmark, Sparkles } from 'lucide-react';
 
 interface Job {
@@ -205,7 +207,7 @@ function App() {
   }, [isSearchExpanded]);
 
   const fetchJobs = () => {
-    fetch('http://localhost:3001/api/jobs')
+    fetch(`${API}/api/jobs`)
       .then(res => res.json())
       .then(data => {
         const normalized = data.map((j: Job) => ({
@@ -257,7 +259,7 @@ function App() {
   const toggleSaveJob = async (job: Job, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const res = await fetch(`http://localhost:3001/api/jobs/${job.id}/toggle-save`, { method: 'POST' });
+      const res = await fetch(`${API}/api/jobs/${job.id}/toggle-save`, { method: 'POST' });
       if (res.ok) {
         const { is_saved } = await res.json();
         setJobs(prev => prev.map(j => j.id === job.id ? { ...j, is_saved } : j));
@@ -331,17 +333,17 @@ function App() {
   const recentJobs = useMemo(() => [...jobs].sort((a, b) => b.scraped_at.localeCompare(a.scraped_at)).slice(0, 5), [jobs]);
   const closingSoonJobs = useMemo(() => jobs.filter(j => j.closing_date && !j.closing_date.toLowerCase().includes('ongoing')).slice(0, 5), [jobs]);
 
-  const jobsByCompany = jobs.reduce((acc, job) => {
+  const jobsByCompany = useMemo(() => jobs.reduce((acc, job) => {
     if (!acc[job.source]) acc[job.source] = [];
     acc[job.source].push(job);
     return acc;
-  }, {} as Record<string, Job[]>);
+  }, {} as Record<string, Job[]>), [jobs]);
 
-  const companies = Object.keys(jobsByCompany).sort();
+  const companies = useMemo(() => Object.keys(jobsByCompany).sort(), [jobsByCompany]);
   const currentJobDetails = useMemo(() => selectedJob ? parseJobDetails(selectedJob) : null, [selectedJob]);
 
-  const reset = () => { 
-    setSelectedJob(null); setCurrentView('home'); setSearchTerm(''); setSelectedModes([]); setMinSalary(null); setClosingSoon(false); setIsSearchExpanded(false);
+  const reset = () => {
+    setSelectedJob(null); setCurrentView('home'); setSearchTerm(''); setSelectedModes([]); setMinSalary(null); setClosingSoon(false); setShowInventories(false); setIsSearchExpanded(false);
     window.history.pushState(null, '', '#');
   };
 

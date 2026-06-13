@@ -103,7 +103,7 @@ async function scrapeDetailsAndSave(db: Database, context: BrowserContext, job: 
         console.error(`\n   ❌ AI failed: ${job.title}`);
     }
   } catch (err: any) {
-    // silent
+    console.warn(`   ⚠️  [${sourceName}] Failed ${job.url}: ${err.message}`);
   } finally {
     await page.close();
   }
