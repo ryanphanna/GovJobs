@@ -1,0 +1,39 @@
+name: Daily Job Scrape
+
+on:
+  schedule:
+    - cron: '0 10 * * *' # Run daily at 6 AM EST (10 AM UTC)
+  workflow_dispatch: # Allow manual runs
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: scraper/package-lock.json
+
+      - name: Install dependencies
+        run: cd scraper && npm install
+
+      - name: Install Playwright Browsers
+        run: cd scraper && npx playwright install chromium --with-deps
+
+      - name: Run Scraper
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          AI_MODEL: "deepseek-chat"
+        run: cd scraper && npx tsx scraper.ts
+
+      - name: Upload jobs.sqlite
+        uses: actions/upload-artifact@v4
+        with:
+          name: jobs-database
+          path: jobs.sqlite
+          retention-days: 7
