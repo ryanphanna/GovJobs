@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
+import DOMPurify from 'dompurify';
 
 const API = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 import { Search, MapPin, Building, Calendar, ExternalLink, Briefcase, LayoutGrid, Building2, ChevronRight, X, DollarSign, Clock, ArrowLeft, Users, Zap, Globe, Filter, ListChecks, Target, Info, ChevronDown, ChevronUp, Bookmark, Sparkles } from 'lucide-react';
@@ -492,7 +493,7 @@ function App() {
                   <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>Full Description</div>
                   <div 
                     style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#64748b' }}
-                    dangerouslySetInnerHTML={{ __html: selectedJob.description }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedJob.description) }}
                   />
                 </div>
               </div>

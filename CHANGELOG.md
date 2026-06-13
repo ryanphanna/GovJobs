@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `reset()` now clears the inventory toggle, making logo-click and the Reset button consistent (Linear: AI-36)
 - Wrapped `jobsByCompany` and `companies` in `useMemo` to avoid recomputing on every render (Linear: AI-38)
 - API base URL extracted to `VITE_API_URL` env variable with `localhost:3001` fallback (Linear: AI-39)
+- Sanitize job descriptions with DOMPurify before rendering via `dangerouslySetInnerHTML`, preventing potential XSS from scraped content (Linear: AI-35)
 - Added pagination to Oracle Cloud (scroll-and-load-more loop), Workday (`loadMoreButton` loop), Njoyn, and iCIMS scrapers — all four previously stopped after the first page of results (Linear: AI-33)
 - Fixed `salary_range` always being stored as `" -  (yearly)"` when AI returns null salary; now stores an empty string and the UI check no longer uses the broken `!== 'null'` comparison (Linear: AI-32)
 - Replaced arbitrary 2-hour expiry window with a run-start timestamp — `cleanupExpiredJobs` now marks only jobs not touched by the current run as inactive, so no job can flicker mid-run regardless of how long the scrape takes (Linear: AI-31)
