@@ -577,7 +577,7 @@ async function main() {
   console.log('--- STARTING TORONTO SCRAPE RUN ---');
 
   // 1. Core Toronto Agencies
-  await scrapeSuccessFactors(db, context, 'https://career17.sapsf.com/careers?company=TTC', 'TTC', 'https://career17.sapsf.com');
+  await scrapeSuccessFactors(db, context, 'https://career17.sapsf.com/career?company=TTCPRODUCTION&career_ns=job_listing_summary&navBarLevel=JOB_SEARCH', 'TTC', 'https://career17.sapsf.com');
   await scrapeSuccessFactors(db, context, 'https://jobs.toronto.ca/jobsatcity/', 'City of Toronto', 'https://jobs.toronto.ca');
   await scrapeOracleCloud(db, context, 'https://ehtc.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?mode=location', 'Metrolinx');
 
