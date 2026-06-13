@@ -23,6 +23,15 @@ interface Job {
 
 type View = 'home' | 'jobs' | 'saved' | 'companies';
 
+const daysUntilClose = (dateStr: string): number | null => {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.floor((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+};
+
 const fixCasing = (s: string) => {
   if (!s) return s;
   const cleaned = s.replace(/\s+/g, ' ').trim();
@@ -111,11 +120,15 @@ const JobRow = ({ job, onClick }: { job: Job, onClick: () => void }) => (
     </div>
     
     <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexShrink: 0 }}>
-      {job.closing_date && (
-        <div style={{ fontSize: '0.75rem', color: '#94a3b8', textAlign: 'right', fontWeight: 500 }}>
-          {job.closing_date}
-        </div>
-      )}
+      {job.closing_date && (() => {
+        const days = daysUntilClose(job.closing_date);
+        const urgent = days !== null && days >= 0 && days <= 7;
+        return (
+          <div style={{ fontSize: '0.75rem', textAlign: 'right', fontWeight: 500, color: urgent ? '#dc2626' : '#94a3b8' }}>
+            {urgent ? `${days}d left` : job.closing_date}
+          </div>
+        );
+      })()}
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
         <ChevronRight size={16} style={{ color: '#cbd5e1' }} />
       </div>
@@ -213,19 +226,19 @@ function App() {
       .then(data => {
         const normalized = data.map((j: Job) => ({
           ...j,
-          job_title: fixCasing(j.job_title
+          job_title: fixCasing((j.job_title || '')
             .replace(/^Available Position:\s+/i, '')
             .replace(/\(\d+\)\s*$/, '')
             .replace(/\d+$/, '')
             .replace(/ -([A-Z])/, ' - $1')
             .trim()),
-          department: j.department
+          department: (j.department || '')
             .replace(/\(\d+\)/g, '')
             .replace(/\s*[-–—]\s*Job Opportunity.*/i, '')
             .replace(/\s*[-–—].*/, '')
             .replace(/^General$/i, '')
             .trim(),
-          closing_date: j.closing_date.replace(/Posted on\s+/i, '').trim(),
+          closing_date: (j.closing_date || '').replace(/Posted on\s+/i, '').trim(),
           source: j.source === 'WATERFRONT TORONTO' ? 'Waterfront Toronto' : j.source
         }));
         setJobs(normalized);
@@ -274,7 +287,7 @@ function App() {
   };
 
   const parseJobDetails = (job: Job) => {
-    const desc = job.description;
+    const desc = job.description || '';
     const cleanDesc = desc.replace(/<[^>]*>?/gm, ' ');
 
     const extract = (key: string) => {
@@ -313,26 +326,47 @@ function App() {
   const filteredJobs = useMemo(() => {
     let pool = jobs;
     if (currentView === 'saved') { pool = jobs.filter(j => j.is_saved); }
-    return pool.filter(job => {
+    const filtered = pool.filter(job => {
       if (!showInventories && job.is_inventory) return false;
       const matchesSearch = job.job_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            job.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            job.source.toLowerCase().includes(searchTerm.toLowerCase());
       const details = parseJobDetails(job);
-      let matchesMode = selectedModes.length === 0 || (details.mode !== null && selectedModes.includes(details.mode));
+      const matchesMode = selectedModes.length === 0 || (details.mode !== null && selectedModes.includes(details.mode));
       let matchesSalary = true;
       if (minSalary) {
         const salaryNum = parseInt(details.salary?.replace(/[$,]/g, '') || '0');
         matchesSalary = salaryNum >= minSalary;
       }
       let matchesDeadline = true;
-      if (closingSoon && job.closing_date) { matchesDeadline = !job.closing_date.toLowerCase().includes('ongoing'); }
+      if (closingSoon) {
+        const days = daysUntilClose(job.closing_date);
+        matchesDeadline = days !== null && days >= 0 && days <= 7;
+      }
       return matchesSearch && matchesMode && matchesSalary && matchesDeadline;
     });
-  }, [jobs, searchTerm, selectedModes, minSalary, closingSoon, currentView]);
+    return filtered.sort((a, b) => {
+      const dA = daysUntilClose(a.closing_date);
+      const dB = daysUntilClose(b.closing_date);
+      const urgentA = dA !== null && dA >= 0 && dA <= 7;
+      const urgentB = dB !== null && dB >= 0 && dB <= 7;
+      if (urgentA && !urgentB) return -1;
+      if (!urgentA && urgentB) return 1;
+      if (urgentA && urgentB) return dA - dB;
+      return b.scraped_at.localeCompare(a.scraped_at);
+    });
+  }, [jobs, searchTerm, selectedModes, minSalary, closingSoon, currentView, showInventories]);
 
   const recentJobs = useMemo(() => [...jobs].sort((a, b) => b.scraped_at.localeCompare(a.scraped_at)).slice(0, 5), [jobs]);
-  const closingSoonJobs = useMemo(() => jobs.filter(j => j.closing_date && !j.closing_date.toLowerCase().includes('ongoing')).slice(0, 5), [jobs]);
+  const closingSoonJobs = useMemo(() => {
+    return jobs
+      .filter(j => j.is_active)
+      .map(j => ({ job: j, days: daysUntilClose(j.closing_date) }))
+      .filter(({ days }) => days !== null && days >= 0 && days <= 7)
+      .sort((a, b) => (a.days ?? 999) - (b.days ?? 999))
+      .slice(0, 5)
+      .map(({ job }) => job);
+  }, [jobs]);
 
   const jobsByCompany = useMemo(() => jobs.reduce((acc, job) => {
     if (!acc[job.source]) acc[job.source] = [];

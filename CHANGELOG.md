@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Jobs closing within 7 days now surface to the top of the job list sorted by days remaining; "Closing Soon" home widget shows only active jobs sorted soonest-first; closing dates display as "Xd left" in red when urgent, raw date otherwise; "Closing soon" filter now correctly matches ≤7 days instead of just filtering out "ongoing" (Linear: AI-37)
+- Fixed null `job_title`, `department`, and `description` fields crashing the frontend normalize step silently, resulting in an empty job list
 - Separated scraping from AI parsing into two independent processes: `npm run scrape` (Playwright only, no AI) and `npm run parse` (concurrent DeepSeek parsing from staged raw text); raw job text is staged in a new `raw_jobs` table; parser runs 5 jobs concurrently; full run time expected to drop from ~2 hours to ~15 minutes total
 - Fixed TTC careers URL: `careers.ttc.ca` is defunct; updated to `career17.sapsf.com/career?company=TTCPRODUCTION` with correct SuccessFactors path (Linear: AI-40)
 - Replaced `Math.random()` job ID fallback in SuccessFactors scraper with a deterministic SHA-256 URL hash (`urlId`), preventing duplicate DB rows on re-runs (Linear: AI-29)
