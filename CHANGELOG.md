@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- Separated scraping from AI parsing into two independent processes: `npm run scrape` (Playwright only, no AI) and `npm run parse` (concurrent DeepSeek parsing from staged raw text); raw job text is staged in a new `raw_jobs` table; parser runs 5 jobs concurrently; full run time expected to drop from ~2 hours to ~15 minutes total
 - Fixed TTC careers URL: `careers.ttc.ca` is defunct; updated to `career17.sapsf.com/career?company=TTCPRODUCTION` with correct SuccessFactors path (Linear: AI-40)
 - Replaced `Math.random()` job ID fallback in SuccessFactors scraper with a deterministic SHA-256 URL hash (`urlId`), preventing duplicate DB rows on re-runs (Linear: AI-29)
 - Hardened `job.title` ID fallbacks in all other scrapers (OPS, GC, Oracle, Workday, Njoyn, HRSmart, iCIMS, Waterfront) with the same URL hash to prevent title-collision duplicates

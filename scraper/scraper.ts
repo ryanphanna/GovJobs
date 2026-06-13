@@ -1,8 +1,7 @@
 import { chromium, Page, BrowserContext } from 'playwright';
 import { createHash } from 'crypto';
 import { Database } from 'sqlite';
-import { initDb, saveJob, cleanupExpiredJobs } from './db';
-import { parseJobWithAI } from './ai_parser';
+import { initDb, saveRawJob, cleanupExpiredJobs } from './db';
 
 export function urlId(url: string): string {
   return createHash('sha256').update(url).digest('hex').substring(0, 12);
@@ -63,7 +62,7 @@ async function handleRedirections(page: Page, depth = 0): Promise<boolean> {
   return depth > 0;
 }
 
-export async function scrapeDetailsAndSave(db: Database, context: BrowserContext, job: JobSummary, sourceName: string) {
+export async function scrapeRawAndStage(db: Database, context: BrowserContext, job: JobSummary, sourceName: string) {
   const page = await context.newPage();
   try {
     await page.goto(job.url, { waitUntil: 'networkidle', timeout: 45000 });
@@ -81,37 +80,8 @@ export async function scrapeDetailsAndSave(db: Database, context: BrowserContext
 
     if (!rawText || rawText.length < 100) return;
 
-    const aiResult = await parseJobWithAI(rawText);
-
-    if (aiResult) {
-        await saveJob(db, {
-          id: job.id!,
-          job_title: aiResult.job_title,
-          department: aiResult.department,
-          location: aiResult.location,
-          salary_range: (aiResult.salary_min || aiResult.salary_max)
-            ? `${aiResult.salary_min ?? ''} - ${aiResult.salary_max ?? ''} (${aiResult.salary_period})`
-            : '',
-          description: aiResult.clean_description,
-          closing_date: aiResult.closing_date || job.closingDate || '',
-          url: job.url,
-          source: sourceName,
-          is_inventory: aiResult.is_inventory ? 1 : 0,
-          is_student: aiResult.is_student ? 1 : 0,
-          salary_min: aiResult.salary_min,
-          salary_max: aiResult.salary_max,
-          salary_period: aiResult.salary_period,
-          work_model: aiResult.work_model,
-          employment_type: aiResult.employment_type,
-          duration: aiResult.duration,
-          is_unionized: aiResult.is_unionized ? 1 : 0,
-          union_name: aiResult.union_name,
-          benefits: JSON.stringify(aiResult.benefits)
-        });
-        process.stdout.write(` ✅`);
-    } else {
-        console.error(`\n   ❌ AI failed: ${job.title}`);
-    }
+    await saveRawJob(db, { id: job.id!, url: job.url, source: sourceName, raw_text: rawText });
+    process.stdout.write(' ✅');
   } catch (err: any) {
     console.warn(`\n   ⚠️  [${sourceName}] Failed ${job.url}: ${err.message}`);
   } finally {
@@ -171,7 +141,7 @@ export async function scrapeSuccessFactors(db: Database, context: BrowserContext
         count++;
         const id = new URL(job.url).searchParams.get('career_job_req_id') || job.url.split('/').filter(Boolean).pop()?.split('?')[0] || urlId(job.url);
         process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
-        await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+        await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
       }
       console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
 
@@ -232,7 +202,7 @@ async function scrapeOPS(db: Database, context: BrowserContext) {
           count++;
           job.id = new URL(job.url).searchParams.get('JobID') || urlId(job.url);
           process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
-          await scrapeDetailsAndSave(db, context, job, sourceName);
+          await scrapeRawAndStage(db, context, job, sourceName);
         }
         console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
         const nextLink = await page.$('#dgSearchResults tr:last-child a:has-text("Next")');
@@ -290,7 +260,7 @@ async function scrapeGC(db: Database, context: BrowserContext) {
           const urlObj = new URL(job.url);
           job.id = urlObj.searchParams.get('poster') || urlId(job.url);
           process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
-          await scrapeDetailsAndSave(db, context, job, sourceName);
+          await scrapeRawAndStage(db, context, job, sourceName);
         }
         console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
         const nextLink = await page.$(`a[href*="requestedPage=${pageNum + 1}"]`);
@@ -341,7 +311,7 @@ async function scrapeOracleCloud(db: Database, context: BrowserContext, url: str
     console.log(`[${sourceName}] Found ${summaries.length} jobs`);
     for (const job of summaries) {
       const id = job.url.split('/').filter(Boolean).pop()?.split('?')[0] || urlId(job.url);
-      await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+      await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
       await new Promise(r => setTimeout(r, 1000));
     }
   } catch (err: any) {
@@ -380,7 +350,7 @@ export async function scrapeWorkday(db: Database, context: BrowserContext, url: 
     console.log(`[${sourceName}] Found ${summaries.length} jobs`);
     for (const job of summaries) {
       const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
-      await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+      await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
     }
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
@@ -411,7 +381,7 @@ async function scrapeNjoyn(db: Database, context: BrowserContext, url: string, s
         count++;
         const id = new URL(job.url).searchParams.get('jobid') || job.url.split('/').filter(Boolean).pop() || urlId(job.url);
         process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
-        await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+        await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
       }
       console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
 
@@ -449,7 +419,7 @@ async function scrapePJB(db: Database, context: BrowserContext) {
     console.log(`[${sourceName}] Found ${summaries.length} potential jobs`);
     for (const job of summaries) {
       const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
-      await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+      await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
     }
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
@@ -478,7 +448,7 @@ async function scrapeHRSmart(db: Database, context: BrowserContext, url: string,
           count++;
           const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
           process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
-          await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+          await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
         }
         console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
         const nextBtn = await page.$('a.paginateNext, a:has-text("»"), a.next, a[rel="next"]');
@@ -522,7 +492,7 @@ async function scrapeICIMS(db: Database, context: BrowserContext, url: string, s
         count++;
         const id = new URL(job.url).searchParams.get('job') || urlId(job.url);
         process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
-        await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+        await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
       }
       console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
 
@@ -558,7 +528,7 @@ export async function scrapeWaterfront(db: Database, context: BrowserContext) {
     const jobLinks = await page.$$eval('a', as => as.filter(a => a.innerText.toLowerCase().includes('view the job posting')).map(a => ({ title: a.parentElement?.innerText.split('\n')[0] || 'Job Posting', url: (a as HTMLAnchorElement).href })));
     for (const job of jobLinks) {
       if (!job.url.includes('waterfrontoronto.ca')) continue;
-      await scrapeDetailsAndSave(db, context, { id: job.url.split('/').filter(Boolean).pop() || urlId(job.url), title: job.title, url: job.url }, sourceName);
+      await scrapeRawAndStage(db, context, { id: job.url.split('/').filter(Boolean).pop() || urlId(job.url), title: job.title, url: job.url }, sourceName);
     }
   } catch (err: any) {
     console.error(`Error scraping Waterfront: ${err.message}`);

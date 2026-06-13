@@ -10,6 +10,19 @@ export async function initDb(): Promise<Database> {
     driver: sqlite3.Database,
   });
 
+  await db.exec('PRAGMA journal_mode=WAL');
+
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS raw_jobs (
+      id TEXT PRIMARY KEY,
+      url TEXT NOT NULL,
+      source TEXT NOT NULL,
+      raw_text TEXT NOT NULL,
+      scraped_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      parsed_at DATETIME
+    )
+  `);
+
   await db.exec(`
     CREATE TABLE IF NOT EXISTS jobs (
       id TEXT PRIMARY KEY,
@@ -100,6 +113,33 @@ export async function saveJob(db: Database, job: {
   );
 }
 
+export async function saveRawJob(db: Database, job: {
+  id: string;
+  url: string;
+  source: string;
+  raw_text: string;
+}) {
+  await db.run(
+    `INSERT INTO raw_jobs (id, url, source, raw_text, scraped_at, parsed_at)
+     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, NULL)
+     ON CONFLICT(id) DO UPDATE SET
+       url = excluded.url,
+       source = excluded.source,
+       raw_text = excluded.raw_text,
+       scraped_at = CURRENT_TIMESTAMP,
+       parsed_at = NULL`,
+    [job.id, job.url, job.source, job.raw_text]
+  );
+}
+
+export async function getUnparsedJobs(db: Database): Promise<Array<{ id: string; url: string; source: string; raw_text: string }>> {
+  return db.all(`SELECT id, url, source, raw_text FROM raw_jobs WHERE parsed_at IS NULL ORDER BY scraped_at ASC`);
+}
+
+export async function markJobParsed(db: Database, id: string) {
+  await db.run(`UPDATE raw_jobs SET parsed_at = CURRENT_TIMESTAMP WHERE id = ?`, [id]);
+}
+
 export async function toggleSaveJob(db: Database, id: string) {
   await db.run(
     `UPDATE jobs SET is_saved = 1 - is_saved WHERE id = ?`,
@@ -108,9 +148,11 @@ export async function toggleSaveJob(db: Database, id: string) {
 }
 
 export async function cleanupExpiredJobs(db: Database, runStartedAt: string) {
-  // Mark jobs as inactive if they weren't touched in this run — anything scraped before the run started is stale
+  // Mark jobs inactive if they weren't re-scraped in this run
   await db.run(
-    `UPDATE jobs SET is_active = 0 WHERE scraped_at < ?`,
+    `UPDATE jobs SET is_active = 0 WHERE id NOT IN (
+      SELECT id FROM raw_jobs WHERE scraped_at >= ?
+    )`,
     [runStartedAt]
   );
 }
