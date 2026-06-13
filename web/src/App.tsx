@@ -301,7 +301,7 @@ function App() {
     };
 
     return {
-      salary: extract('Salary Scale') || extract('Salary Range') || extract('Salary') || (job.salary_range !== 'null' ? job.salary_range : null),
+      salary: extract('Salary Scale') || extract('Salary Range') || extract('Salary') || job.salary_range || null,
       mode: normalizeMode(extract('Work Mode') || extract('Employment Type')),
       vacancies: extract('Number of Vacancies') || extract('No. of Vacancies') || extract('Vacancies'),
       reqId: extract('Requisition ID') || extract('Job ID') || extract('Req ID'),

@@ -81,7 +81,9 @@ async function scrapeDetailsAndSave(db: Database, context: BrowserContext, job: 
           job_title: aiResult.job_title,
           department: aiResult.department,
           location: aiResult.location,
-          salary_range: `${aiResult.salary_min || ''} - ${aiResult.salary_max || ''} (${aiResult.salary_period})`,
+          salary_range: (aiResult.salary_min || aiResult.salary_max)
+            ? `${aiResult.salary_min ?? ''} - ${aiResult.salary_max ?? ''} (${aiResult.salary_period})`
+            : '',
           description: aiResult.clean_description,
           closing_date: aiResult.closing_date || job.closingDate || '',
           url: job.url,
@@ -448,6 +450,7 @@ async function scrapeWaterfront(db: Database, context: BrowserContext) {
 }
 
 async function main() {
+  const runStartedAt = new Date().toISOString();
   console.log('Launching browser (non-headless)...');
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext(BASE_CONFIG);
@@ -478,7 +481,7 @@ async function main() {
   await scrapeWaterfront(db, context);
 
   console.log('\nCleaning up expired jobs...');
-  await cleanupExpiredJobs(db);
+  await cleanupExpiredJobs(db, runStartedAt);
 
   console.log('All scraping tasks complete.');
   await browser.close();
