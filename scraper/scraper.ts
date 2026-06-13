@@ -553,11 +553,13 @@ async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, so
     await page.waitForTimeout(3000);
     
     // Handle "Leaving the GC Jobs" warning page
-    if (page.url().includes('quitter-leave')) {
-        const continueBtn = await page.$('input[value="Continue"], button:has-text("Continue"), a:has-text("Continue")');
-        if (continueBtn) {
-            await continueBtn.click();
-            await page.waitForLoadState('networkidle');
+    const bodyText = await page.textContent('body');
+    if (bodyText?.includes('leave the GC Jobs') || bodyText?.includes('quitter le site')) {
+        const externalLink = await page.$$eval('main a, #content a, .center-block a', as => {
+             return as.filter(a => !(a as HTMLAnchorElement).href.includes('cfp-psc.gc.ca') && !(a as HTMLAnchorElement).href.includes('#') && !(a as HTMLAnchorElement).href.includes('mailto')).map(a => (a as HTMLAnchorElement).href);
+        });
+        if (externalLink.length > 0 && externalLink[0]) {
+            await page.goto(externalLink[0] as string, { waitUntil: 'networkidle' });
             await page.waitForTimeout(3000);
         }
     }
@@ -587,6 +589,18 @@ async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, so
           clone.querySelectorAll('script, style, link, meta, noscript, .wb-share, #wb-dtmd, .socialMediaButtons, .page-options').forEach(e => e.remove());
           return clone.innerHTML?.trim() || '';
       }).catch(() => '');
+    }
+    
+    // Aggressively strip raw JSON strings that may have leaked from BambooHR/SuccessFactors
+    if (description) {
+        description = description.replace(/\{"?@context"?.*?JobPosting.*?\}/gi, '');
+        description = description.replace(/\{"?@type"?.*?PropertyValue.*?\}/gi, '');
+        description = description.replace(/\{"?@type"?.*?Organization.*?\}/gi, '');
+        description = description.replace(/\{"?@type"?.*?Place.*?\}/gi, '');
+        description = description.replace(/\{"?@type"?.*?PostalAddress.*?\}/gi, '');
+        description = description.replace(/\{"?[^}]*"identifier"\s*:\s*\{.*?\}\}/gi, '');
+        description = description.replace(/\{"?[^}]*"hiringOrganization"\s*:\s*\{.*?\}\}/gi, '');
+        description = description.replace(/\{"?[^}]*"jobLocation"\s*:\s*\{.*?\}\}/gi, '');
     }
 
     const department = await page.$eval('.job-department, .department, [class*="department"]', (el: Element) => (el as HTMLElement).textContent?.trim() || '').catch(() => job.department || '');
