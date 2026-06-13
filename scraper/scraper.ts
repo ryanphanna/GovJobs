@@ -1,6 +1,11 @@
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
+import { createHash } from 'crypto';
 import { initDb, saveJob, cleanupExpiredJobs } from './db';
 import { parseJobWithAI } from './ai_parser';
+
+function urlId(url: string): string {
+  return createHash('sha256').update(url).digest('hex').substring(0, 12);
+}
 
 interface JobSummary {
   id: string;
@@ -153,7 +158,7 @@ async function scrapeSuccessFactors(context: BrowserContext, url: string, source
       let count = 0;
       for (const job of summaries) {
         count++;
-        const id = new URL(job.url).searchParams.get('career_job_req_id') || job.url.split('/').filter(Boolean).pop()?.split('?')[0] || Math.random().toString(36).substring(7);
+        const id = new URL(job.url).searchParams.get('career_job_req_id') || job.url.split('/').filter(Boolean).pop()?.split('?')[0] || urlId(job.url);
         process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
         await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
       }
@@ -214,7 +219,7 @@ async function scrapeOPS(context: BrowserContext) {
         let count = 0;
         for (const job of summaries) {
           count++;
-          job.id = new URL(job.url).searchParams.get('JobID') || job.title;
+          job.id = new URL(job.url).searchParams.get('JobID') || urlId(job.url);
           process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
           await scrapeDetailsAndSave(context, job, sourceName);
         }
@@ -261,7 +266,7 @@ async function scrapeGC(context: BrowserContext) {
         for (const job of summaries) {
           count++;
           const urlObj = new URL(job.url);
-          job.id = urlObj.searchParams.get('poster') || job.title;
+          job.id = urlObj.searchParams.get('poster') || urlId(job.url);
           process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
           await scrapeDetailsAndSave(context, job, sourceName);
         }
@@ -298,7 +303,7 @@ async function scrapeOracleCloud(context: BrowserContext, url: string, sourceNam
 
     console.log(`[${sourceName}] Found ${summaries.length} potential jobs`);
     for (const job of summaries) {
-      const id = job.url.split('/').filter(Boolean).pop()?.split('?')[0] || job.title;
+      const id = job.url.split('/').filter(Boolean).pop()?.split('?')[0] || urlId(job.url);
       await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
       await new Promise(r => setTimeout(r, 1000));
     }
@@ -323,7 +328,7 @@ async function scrapeWorkday(context: BrowserContext, url: string, sourceName: s
 
     console.log(`[${sourceName}] Found ${summaries.length} jobs`);
     for (const job of summaries) {
-      const id = job.url.split('/').filter(Boolean).pop() || job.title;
+      const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
       await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
     }
   } catch (err: any) {
@@ -347,7 +352,7 @@ async function scrapeNjoyn(context: BrowserContext, url: string, sourceName: str
 
     console.log(`[${sourceName}] Found ${summaries.length} jobs`);
     for (const job of summaries) {
-      const id = new URL(job.url).searchParams.get('jobid') || job.url.split('/').filter(Boolean).pop() || job.title;
+      const id = new URL(job.url).searchParams.get('jobid') || job.url.split('/').filter(Boolean).pop() || urlId(job.url);
       await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
     }
   } catch (err: any) {
@@ -375,7 +380,7 @@ async function scrapeHRSmart(context: BrowserContext, url: string, sourceName: s
         let count = 0;
         for (const job of summaries) {
           count++;
-          const id = job.url.split('/').filter(Boolean).pop() || job.title;
+          const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
           process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
           await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
         }
@@ -413,7 +418,7 @@ async function scrapeICIMS(context: BrowserContext, url: string, sourceName: str
 
     console.log(`[${sourceName}] Found ${summaries.length} jobs`);
     for (const job of summaries) {
-      const id = new URL(job.url).searchParams.get('job') || job.title;
+      const id = new URL(job.url).searchParams.get('job') || urlId(job.url);
       await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
     }
   } catch (err: any) {
@@ -432,7 +437,7 @@ async function scrapeWaterfront(context: BrowserContext) {
     const jobLinks = await page.$$eval('a', as => as.filter(a => a.innerText.toLowerCase().includes('view the job posting')).map(a => ({ title: a.parentElement?.innerText.split('\n')[0] || 'Job Posting', url: (a as HTMLAnchorElement).href })));
     for (const job of jobLinks) {
       if (!job.url.includes('waterfrontoronto.ca')) continue;
-      await scrapeDetailsAndSave(context, { id: job.url.split('/').filter(Boolean).pop() || job.title, title: job.title, url: job.url }, sourceName);
+      await scrapeDetailsAndSave(context, { id: job.url.split('/').filter(Boolean).pop() || urlId(job.url), title: job.title, url: job.url }, sourceName);
     }
   } catch (err: any) {
     console.error(`Error scraping Waterfront: ${err.message}`);
