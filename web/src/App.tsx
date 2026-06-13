@@ -281,6 +281,14 @@ function App() {
         val = val.replace(/^[,.\s]+/, '');
         if (key.toLowerCase().includes('salary')) {
            val = val.replace(/Information:?/gi, '').replace(/Job Opportunity/gi, '').trim();
+           // Try to extract just the monetary range (e.g. $50,000 to $60,000)
+           const moneyMatch = val.match(/\$?\d{2,3},?\d{3}(\.\d{2})?(\s*(to|-|–|and)\s*\$?\d{2,3},?\d{3}(\.\d{2})?)?/i);
+           if (moneyMatch) {
+               val = moneyMatch[0];
+           } else if (val.length > 50) {
+               // Fallback if no money format but string is too long
+               val = val.substring(0, 50) + '...';
+           }
         }
         if (key.toLowerCase().includes('vacancies')) {
            const numMatch = val.match(/\d+/);

@@ -8,7 +8,7 @@ const deepseekClient = new OpenAI({
     apiKey: process.env.DEEPSEEK_API_KEY || ""
 });
 
-const AI_MODEL = process.env.AI_MODEL || "deepseek-chat";
+const AI_MODEL = process.env.AI_MODEL || "deepseek-v4-flash";
 
 export interface ParsedJob {
     job_title: string;
@@ -30,6 +30,8 @@ export interface ParsedJob {
 }
 
 export async function parseJobWithAI(description: string): Promise<ParsedJob | null> {
+    const today = new Date().toISOString().split('T')[0];
+    
     const prompt = `
     Extract the following information from the job description text provided. 
     Return the data in a valid JSON format. Be extremely precise.
@@ -57,7 +59,7 @@ export async function parseJobWithAI(description: string): Promise<ParsedJob | n
     CONSTRAINTS:
     - If salary is a range like "$96,566.00 - $132,880.00", salary_min = 96566, salary_max = 132880.
     - If salary is hourly, keep it hourly (do not multiply).
-    - Closing date: infer the date if it says "Closing in 2 weeks" relative to June 13, 2026.
+    - Closing date: infer the date if it says "Closing in 2 weeks" relative to today (${today}).
 
     Text:
     ${description}
