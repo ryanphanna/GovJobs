@@ -575,7 +575,7 @@ async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, so
     for (const sel of descSelectors) {
       description = await page.$eval(sel, (el: Element) => {
           const clone = el.cloneNode(true) as HTMLElement;
-          clone.querySelectorAll('script, style, link, meta, noscript').forEach(e => e.remove());
+          clone.querySelectorAll('script, style, link, meta, noscript, .wb-share, #wb-dtmd, .socialMediaButtons, .page-options').forEach(e => e.remove());
           return clone.innerHTML?.trim() || '';
       }).catch(() => '');
       if (description) break;
@@ -584,7 +584,7 @@ async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, so
     if (!description) {
       description = await page.$eval('main, #content, .content, article, #job-content, #wb-main, #ats_content', (el: Element) => {
           const clone = el.cloneNode(true) as HTMLElement;
-          clone.querySelectorAll('script, style, link, meta, noscript').forEach(e => e.remove());
+          clone.querySelectorAll('script, style, link, meta, noscript, .wb-share, #wb-dtmd, .socialMediaButtons, .page-options').forEach(e => e.remove());
           return clone.innerHTML?.trim() || '';
       }).catch(() => '');
     }

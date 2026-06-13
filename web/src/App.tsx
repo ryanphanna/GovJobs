@@ -290,25 +290,12 @@ function App() {
       return val;
     };
 
-    const extractSection = (keywords: string[]) => {
-      for (const keyword of keywords) {
-        const regex = new RegExp(`${keyword}:?\\s*([\\s\\S]*?)(?=\\n\\n|\\n[A-Z][a-z]|$)`, 'i');
-        const match = cleanDesc.match(regex);
-        if (match && match[1].trim().length > 20) {
-           return match[1].trim().replace(/^[,.\s]+/, '');
-        }
-      }
-      return null;
-    };
-
     return {
       salary: extract('Salary Scale') || extract('Salary Range') || extract('Salary') || (job.salary_range !== 'null' ? job.salary_range : null),
       mode: normalizeMode(extract('Work Mode') || extract('Employment Type')),
       vacancies: extract('Number of Vacancies') || extract('No. of Vacancies') || extract('Vacancies'),
       reqId: extract('Requisition ID') || extract('Job ID') || extract('Req ID'),
       future: desc.toLowerCase().includes('future requirements') ? 'Eligible for future requirements' : null,
-      responsibilities: extractSection(['Major Responsibilities', 'Key Responsibilities', 'Responsibilities', 'What you will do']),
-      qualifications: extractSection(['Key Qualifications', 'Skills and Qualifications', 'Qualifications', 'What you bring']),
     };
   };
 
@@ -490,20 +477,6 @@ function App() {
               <div style={{ backgroundColor: 'white', padding: '0', borderRadius: '0' }}>
                 <div style={{ color: '#2563eb', fontSize: '0.8125rem', fontWeight: 700, marginBottom: '0.5rem' }}>{selectedJob.source}</div>
                 <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 2rem 0', letterSpacing: '-0.04em', lineHeight: 1.1 }}>{selectedJob.job_title}</h1>
-                
-                {currentJobDetails?.responsibilities && (
-                  <div style={{ marginBottom: '2.5rem' }}>
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>Responsibilities</div>
-                    <div style={{ fontSize: '0.9375rem', lineHeight: 1.7, color: '#475569', whiteSpace: 'pre-wrap' }}>{currentJobDetails.responsibilities}</div>
-                  </div>
-                )}
-
-                {currentJobDetails?.qualifications && (
-                  <div style={{ marginBottom: '2.5rem' }}>
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>Qualifications</div>
-                    <div style={{ fontSize: '0.9375rem', lineHeight: 1.7, color: '#475569', whiteSpace: 'pre-wrap' }}>{currentJobDetails.qualifications}</div>
-                  </div>
-                )}
 
                 <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '2rem' }}>
                   <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>Full Description</div>
