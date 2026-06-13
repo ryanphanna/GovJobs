@@ -297,14 +297,29 @@ async function scrapeOracleCloud(db: Database, context: BrowserContext, url: str
   try {
     await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(15000);
+
+    // Click "Show more" until it disappears, loading all jobs onto the page
+    let loadMore = true;
+    while (loadMore) {
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(2000);
+      const moreBtn = await page.$('button:has-text("Show more"), button:has-text("Load more"), a:has-text("Show more jobs")');
+      if (moreBtn && await moreBtn.isVisible()) {
+        await moreBtn.click();
+        await page.waitForTimeout(5000);
+      } else {
+        loadMore = false;
+      }
+    }
+
     const summaries = await page.$$eval('.job-tile, .job-card, li[role="listitem"]', (items) => {
         return items.map(item => {
             const link = item.querySelector('a');
             return link ? { title: link.textContent?.trim() || '', url: (link as HTMLAnchorElement).href } : null;
-        }).filter(j => j && j.title && !j.url.includes('javascript:')) as JobSummary[];
+        }).filter(j => j && j.title && !j.url.includes('javascript:')) as { title: string, url: string }[];
     });
 
-    console.log(`[${sourceName}] Found ${summaries.length} potential jobs`);
+    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
     for (const job of summaries) {
       const id = job.url.split('/').filter(Boolean).pop()?.split('?')[0] || urlId(job.url);
       await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
@@ -323,8 +338,23 @@ async function scrapeWorkday(db: Database, context: BrowserContext, url: string,
   try {
     await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(10000);
+
+    // Click "Load more jobs" until all postings are on the page
+    let loadMore = true;
+    while (loadMore) {
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(2000);
+      const loadMoreBtn = await page.$('button[data-automation-id="loadMoreButton"]');
+      if (loadMoreBtn && await loadMoreBtn.isVisible()) {
+        await loadMoreBtn.click();
+        await page.waitForTimeout(5000);
+      } else {
+        loadMore = false;
+      }
+    }
+
     const summaries = await page.evaluate(() => {
-        const links = Array.from(document.querySelectorAll('a[data-automation-id="jobTitle"], .css-19v9u64 a'));
+        const links = Array.from(document.querySelectorAll('a[data-automation-id="jobTitle"]'));
         return links.map(l => ({ title: l.textContent?.trim() || '', url: (l as HTMLAnchorElement).href }))
                     .filter(j => j.title && j.url);
     });
@@ -347,16 +377,36 @@ async function scrapeNjoyn(db: Database, context: BrowserContext, url: string, s
   try {
     await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(7000);
-    const summaries = await page.evaluate(() => {
-        const links = Array.from(document.querySelectorAll('a[href*="joblisting"], .job-title a, .njoyn-job-row a'));
-        return links.map(l => ({ title: l.textContent?.trim() || '', url: (l as HTMLAnchorElement).href }))
-                    .filter(j => j.title.length > 5 && j.url);
-    });
 
-    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
-    for (const job of summaries) {
-      const id = new URL(job.url).searchParams.get('jobid') || job.url.split('/').filter(Boolean).pop() || urlId(job.url);
-      await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+    let hasNextPage = true;
+    let pageNum = 1;
+    while (hasNextPage) {
+      console.log(`[${sourceName}] Page ${pageNum}...`);
+      const summaries = await page.evaluate(() => {
+          const links = Array.from(document.querySelectorAll('a[href*="joblisting"], .job-title a, .njoyn-job-row a'));
+          return links.map(l => ({ title: l.textContent?.trim() || '', url: (l as HTMLAnchorElement).href }))
+                      .filter(j => j.title.length > 5 && j.url);
+      });
+
+      let count = 0;
+      for (const job of summaries) {
+        count++;
+        const id = new URL(job.url).searchParams.get('jobid') || job.url.split('/').filter(Boolean).pop() || urlId(job.url);
+        process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
+        await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+      }
+      console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
+
+      const nextBtn = await page.$('a:has-text("Next"), a.nextpage, a[rel="next"], td.next a');
+      if (nextBtn && await nextBtn.isVisible()) {
+        await nextBtn.click();
+        await page.waitForLoadState('networkidle');
+        await page.waitForTimeout(5000);
+        pageNum++;
+        if (pageNum > 20) break;
+      } else {
+        hasNextPage = false;
+      }
     }
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
@@ -412,17 +462,42 @@ async function scrapeICIMS(db: Database, context: BrowserContext, url: string, s
   try {
     await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(10000);
-    const frame = page.frame({ url: /icims\.com/ }) || page;
-    const summaries = await frame.evaluate(() => {
-        const links = Array.from(document.querySelectorAll('.iCIMS_JobsTable a[href*="job="]'));
-        return links.map(l => ({ title: l.textContent?.trim() || '', url: (l as HTMLAnchorElement).href }))
-                    .filter(j => j.title && j.url);
-    });
 
-    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
-    for (const job of summaries) {
-      const id = new URL(job.url).searchParams.get('job') || urlId(job.url);
-      await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+    let hasNextPage = true;
+    let pageNum = 1;
+    while (hasNextPage) {
+      console.log(`[${sourceName}] Page ${pageNum}...`);
+      const frame = page.frame({ url: /icims\.com/ }) ?? page;
+      const summaries = await frame.evaluate(() => {
+          const links = Array.from(document.querySelectorAll('.iCIMS_JobsTable a[href*="job="]'));
+          return links.map(l => ({ title: l.textContent?.trim() || '', url: (l as HTMLAnchorElement).href }))
+                      .filter(j => j.title && j.url);
+      });
+
+      let count = 0;
+      for (const job of summaries) {
+        count++;
+        const id = new URL(job.url).searchParams.get('job') || urlId(job.url);
+        process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
+        await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
+      }
+      console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
+
+      const nextBtn = await frame.$('a[title="Next Page"], a:has-text("Next"), .iCIMS_Pagination a:last-child');
+      if (nextBtn && await nextBtn.isVisible()) {
+        const isDisabled = await nextBtn.getAttribute('class').then(c => c?.includes('disabled') || false);
+        if (!isDisabled) {
+          await nextBtn.click();
+          await page.waitForLoadState('networkidle');
+          await page.waitForTimeout(7000);
+          pageNum++;
+          if (pageNum > 20) break;
+        } else {
+          hasNextPage = false;
+        }
+      } else {
+        hasNextPage = false;
+      }
     }
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
