@@ -29,7 +29,8 @@ async function handleRedirections(page: Page, depth = 0): Promise<boolean> {
   if (depth > 3) return false;
 
   const bodyText = await page.textContent('body');
-  const isWarningPage = bodyText?.includes('leave the GC Jobs') ||
+
+  const isWarningPage = bodyText?.includes('leave the GC Jobs') || 
                         bodyText?.includes('quitter le site') ||
                         bodyText?.includes('Leaving an External Site') ||
                         page.url().includes('page2440');
@@ -260,6 +261,17 @@ async function scrapeGC(db: Database, context: BrowserContext) {
             return links.map(l => {
                 const title = l.textContent?.trim() || '';
                 const href = (l as HTMLAnchorElement).href;
+                
+                // Get the closest row container to check for "Who can apply" info
+                const row = l.closest('li') || l.closest('tr') || l.parentElement;
+                const rowText = row?.textContent?.toLowerCase() || '';
+                
+                // Skip if explicitly internal or restricted to public service
+                if (rowText.includes('internal to the public service') || 
+                    rowText.includes('public service only')) {
+                    return null;
+                }
+
                 if (!title || !href || title.length < 3) return null;
                 return { title, url: href };
             }).filter(Boolean) as JobSummary[];
