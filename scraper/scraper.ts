@@ -1,5 +1,6 @@
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
 import { initDb, saveJob, cleanupExpiredJobs } from './db';
+import { parseJobWithAI } from './ai_parser';
 
 interface JobSummary {
   id: string;
@@ -564,60 +565,44 @@ async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, so
         }
     }
 
-    const descSelectors = [
-      '.jobdescription', '.joqReqDescription', '.description', 
-      '#job-details', '.job-info', '.job-content', '.field-name-body', 
-      '.BambooHR-ATS-Job-Details', '[class*="JobRequisitionDetails"]',
-      '.job-details', '.job-detail', '.description-content', '.job-posting',
-      '#ops-job-details', '.ops-description', '#gc-job-poster', '.avanti-job-details',
-      '.iCIMS_JobDescription', '#workday-job-description', '.job-description', '.job_description'
-    ];
-    
-    let description = '';
-    for (const sel of descSelectors) {
-      description = await page.$eval(sel, (el: Element) => {
-          const clone = el.cloneNode(true) as HTMLElement;
-          clone.querySelectorAll('script, style, link, meta, noscript, .wb-share, #wb-dtmd, .socialMediaButtons, .page-options').forEach(e => e.remove());
-          return clone.innerHTML?.trim() || '';
-      }).catch(() => '');
-      if (description) break;
-    }
-    
-    if (!description) {
-      description = await page.$eval('main, #content, .content, article, #job-content, #wb-main, #ats_content', (el: Element) => {
-          const clone = el.cloneNode(true) as HTMLElement;
-          clone.querySelectorAll('script, style, link, meta, noscript, .wb-share, #wb-dtmd, .socialMediaButtons, .page-options').forEach(e => e.remove());
-          return clone.innerHTML?.trim() || '';
-      }).catch(() => '');
-    }
-    
-    // Aggressively strip raw JSON strings that may have leaked from BambooHR/SuccessFactors
-    if (description) {
-        description = description.replace(/\{"?@context"?.*?JobPosting.*?\}/gi, '');
-        description = description.replace(/\{"?@type"?.*?PropertyValue.*?\}/gi, '');
-        description = description.replace(/\{"?@type"?.*?Organization.*?\}/gi, '');
-        description = description.replace(/\{"?@type"?.*?Place.*?\}/gi, '');
-        description = description.replace(/\{"?@type"?.*?PostalAddress.*?\}/gi, '');
-        description = description.replace(/\{"?[^}]*"identifier"\s*:\s*\{.*?\}\}/gi, '');
-        description = description.replace(/\{"?[^}]*"hiringOrganization"\s*:\s*\{.*?\}\}/gi, '');
-        description = description.replace(/\{"?[^}]*"jobLocation"\s*:\s*\{.*?\}\}/gi, '');
-    }
-
-    const department = await page.$eval('.job-department, .department, [class*="department"]', (el: Element) => (el as HTMLElement).textContent?.trim() || '').catch(() => job.department || '');
-    const location = await page.$eval('.job-location, .location, [class*="location"]', (el: Element) => (el as HTMLElement).textContent?.trim() || '').catch(() => job.location || '');
-    const salary = await page.$eval('.salary, .job-salary, .salary-range', (el: Element) => (el as HTMLElement).textContent?.trim() || '').catch(() => '');
-
-    await saveJob(await initDb(), {
-      id: job.id!,
-      job_title: job.title,
-      department,
-      location,
-      salary_range: salary,
-      description: description || 'No description found.',
-      closing_date: job.closingDate || '',
-      url: job.url,
-      source: sourceName
+    // Get clean text of the entire body to send to AI
+    const rawText = await page.evaluate(() => {
+        const clone = document.body.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll('script, style, link, meta, noscript, .wb-share, #wb-dtmd, .socialMediaButtons, .page-options, nav, footer, header').forEach(e => e.remove());
+        return clone.innerText || '';
     });
+
+    if (!rawText) return;
+
+    // AI Parsing
+    const aiResult = await parseJobWithAI(rawText);
+    
+    if (aiResult) {
+        await saveJob(await initDb(), {
+          id: job.id!,
+          job_title: aiResult.job_title,
+          department: aiResult.department,
+          location: aiResult.location,
+          salary_range: `${aiResult.salary_min || ''} - ${aiResult.salary_max || ''} (${aiResult.salary_period})`,
+          description: aiResult.clean_description,
+          closing_date: aiResult.closing_date || job.closingDate || '',
+          url: job.url,
+          source: sourceName,
+          is_inventory: aiResult.is_inventory ? 1 : 0,
+          is_student: aiResult.is_student ? 1 : 0,
+          salary_min: aiResult.salary_min,
+          salary_max: aiResult.salary_max,
+          salary_period: aiResult.salary_period,
+          work_model: aiResult.work_model,
+          employment_type: aiResult.employment_type,
+          duration: aiResult.duration,
+          is_unionized: aiResult.is_unionized ? 1 : 0,
+          union_name: aiResult.union_name,
+          benefits: JSON.stringify(aiResult.benefits)
+        });
+    } else {
+        console.error(`[${sourceName}] AI failed to parse: ${job.title}`);
+    }
   } catch (err: any) {
     // silent fail
   } finally {

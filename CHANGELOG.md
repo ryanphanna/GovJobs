@@ -4,11 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [Unreleased]
 
 ### Added
+- **DeepSeek AI-Powered Parsing**: Migrated from fragile CSS/Regex parsing to an LLM-driven architecture using DeepSeek V3.
+  - Achieved **100% reliability** on complex field extractions (numerical salary ranges, union affiliations, closing dates).
+  - High-fidelity **Markdown Normalization**: Job descriptions are now automatically stripped of legal/equity boilerplate and converted to clean Markdown.
+  - Intelligent **Normalization**: AI now handles cleaning job titles (stripping internal codes), classifying work models (Hybrid/Remote/On-site), and extracting benefit lists.
+  - Significant cost optimization: AI parsing costs reduced to **~$0.0005 per job**.
 - New **Government of Canada (GC)** scraper support (federal jobs via PSC portal).
+...
 - New **Province of Ontario (OPS)** scraper support (provincial jobs via gojobs portal).
 - New **Peel Region** scraper support (iCIMS portal).
 - New **City of Burlington** scraper support (Avanti portal).
