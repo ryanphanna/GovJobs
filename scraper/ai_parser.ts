@@ -8,6 +8,8 @@ const deepseekClient = new OpenAI({
     apiKey: process.env.DEEPSEEK_API_KEY || ""
 });
 
+const AI_MODEL = process.env.AI_MODEL || "deepseek-chat";
+
 export interface ParsedJob {
     job_title: string;
     department: string;
@@ -64,16 +66,20 @@ export async function parseJobWithAI(description: string): Promise<ParsedJob | n
     try {
         const completion = await deepseekClient.chat.completions.create({
             messages: [{ role: "user", content: prompt }],
-            model: "deepseek-chat",
-            response_format: { type: "json_object" }
+            model: AI_MODEL,
+            response_format: { type: "json_object" },
+            timeout: 60000
         });
 
         const content = completion.choices[0].message.content;
-        if (!content) return null;
+        if (!content) {
+            console.error("AI returned empty content");
+            return null;
+        }
 
         return JSON.parse(content) as ParsedJob;
-    } catch (error) {
-        console.error("DeepSeek parsing error:", error);
+    } catch (error: any) {
+        console.error(`AI parsing error (${AI_MODEL}):`, error.message);
         return null;
     }
 }
