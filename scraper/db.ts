@@ -60,14 +60,26 @@ export async function saveJob(db: Database, job: {
   const isInventory = /inventory|ongoing|continuous|roster|pool/i.test(job.job_title) ? 1 : 0;
   const isStudent = /student|co-op|coop|intern|summer|early talent|articling/i.test(job.job_title) ? 1 : 0;
   
-  const cleanTitle = job.job_title
+  let cleanTitle = job.job_title
+    // Remove Inventory/Ongoing markers
     .replace(/\s*-\s*INVENTORY\b/i, '')
     .replace(/\bINVENTORY\b\s*-\s*/i, '')
     .replace(/\(?Inventory\)?/i, '')
     .replace(/Ongoing Student Recruitment/i, 'Student Recruitment')
     .replace(/\s*-\s*Ongoing.*Opportunities\b/i, '')
     .replace(/\s*-\s*Anticipatory.*Staffing\b/i, '')
+    // Remove "The [Agency] is recruiting..." preambles
+    .replace(/The\s+.*?\s+is\s+recruiting\s+/i, '')
+    .replace(/We are hiring\s+/i, '')
+    // Remove marketing fluff after hyphens (e.g., "- Make a difference today!")
+    .replace(/\s*-\s*Make a difference.*$/i, '')
+    // Remove job codes in parentheses like (AS-04) or (#25211)
+    .replace(/\s*\([A-Z]{2}-\d{2}\)/i, '')
+    .replace(/\s*\(\#\d+\)/i, '')
     .trim();
+
+  // If the preamble removal left a lowercase word like "bilingual call centre agent", uppercase it
+  cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
 
   await db.run(
     `INSERT INTO jobs (id, job_title, department, location, salary_range, description, closing_date, url, source, is_active, is_inventory, is_student, scraped_at)
