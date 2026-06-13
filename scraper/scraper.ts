@@ -1,5 +1,6 @@
-import { chromium, Browser, Page, BrowserContext } from 'playwright';
+import { chromium, Page, BrowserContext } from 'playwright';
 import { createHash } from 'crypto';
+import { Database } from 'sqlite';
 import { initDb, saveJob, cleanupExpiredJobs } from './db';
 import { parseJobWithAI } from './ai_parser';
 
@@ -28,7 +29,7 @@ async function handleRedirections(page: Page, depth = 0): Promise<boolean> {
   if (depth > 3) return false;
 
   const bodyText = await page.textContent('body');
-  const isWarningPage = bodyText?.includes('leave the GC Jobs') || 
+  const isWarningPage = bodyText?.includes('leave the GC Jobs') ||
                         bodyText?.includes('quitter le site') ||
                         bodyText?.includes('Leaving an External Site') ||
                         page.url().includes('page2440');
@@ -37,9 +38,9 @@ async function handleRedirections(page: Page, depth = 0): Promise<boolean> {
     const externalLink = await page.$$eval('main a, #content a, .center-block a, .external-link a', as => {
       return as.filter(a => {
         const href = (a as HTMLAnchorElement).href;
-        return href.startsWith('http') && 
-               !href.includes('cfp-psc.gc.ca') && 
-               !href.includes('#') && 
+        return href.startsWith('http') &&
+               !href.includes('cfp-psc.gc.ca') &&
+               !href.includes('#') &&
                !href.includes('mailto');
       }).map(a => (a as HTMLAnchorElement).href);
     });
@@ -54,15 +55,15 @@ async function handleRedirections(page: Page, depth = 0): Promise<boolean> {
   return depth > 0;
 }
 
-async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, sourceName: string) {
+async function scrapeDetailsAndSave(db: Database, context: BrowserContext, job: JobSummary, sourceName: string) {
   const page = await context.newPage();
   try {
     await page.goto(job.url, { waitUntil: 'networkidle', timeout: 45000 });
     await page.waitForTimeout(3000);
-    
+
     await handleRedirections(page);
     await page.waitForSelector('body', { timeout: 10000 });
-    
+
     const rawText = await page.evaluate(() => {
         const clone = document.body.cloneNode(true) as HTMLElement;
         const noise = 'script, style, link, meta, noscript, .wb-share, #wb-dtmd, .socialMediaButtons, .page-options, nav, footer, header, #header, #footer';
@@ -73,9 +74,9 @@ async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, so
     if (!rawText || rawText.length < 100) return;
 
     const aiResult = await parseJobWithAI(rawText);
-    
+
     if (aiResult) {
-        await saveJob(await initDb(), {
+        await saveJob(db, {
           id: job.id!,
           job_title: aiResult.job_title,
           department: aiResult.department,
@@ -108,7 +109,7 @@ async function scrapeDetailsAndSave(context: BrowserContext, job: JobSummary, so
   }
 }
 
-async function scrapeSuccessFactors(context: BrowserContext, url: string, sourceName: string, baseUrl: string) {
+async function scrapeSuccessFactors(db: Database, context: BrowserContext, url: string, sourceName: string, baseUrl: string) {
   console.log(`Scraping ${sourceName} (SuccessFactors)...`);
   const page = await context.newPage();
   try {
@@ -160,7 +161,7 @@ async function scrapeSuccessFactors(context: BrowserContext, url: string, source
         count++;
         const id = new URL(job.url).searchParams.get('career_job_req_id') || job.url.split('/').filter(Boolean).pop()?.split('?')[0] || urlId(job.url);
         process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
-        await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
+        await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
       }
       console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
 
@@ -168,7 +169,7 @@ async function scrapeSuccessFactors(context: BrowserContext, url: string, source
       if (nextBtn) {
         const isDisabled = await nextBtn.getAttribute('class').then(c => c?.includes('disabled') || c?.includes('inactive') || false) ||
                            await nextBtn.getAttribute('aria-disabled').then(a => a === 'true');
-        
+
         if (await nextBtn.isVisible() && !isDisabled) {
             await nextBtn.click();
             await page.waitForTimeout(10000);
@@ -186,7 +187,7 @@ async function scrapeSuccessFactors(context: BrowserContext, url: string, source
   }
 }
 
-async function scrapeOPS(context: BrowserContext) {
+async function scrapeOPS(db: Database, context: BrowserContext) {
   const sourceName = 'Province of Ontario';
   console.log(`Scraping ${sourceName} (OPS)...`);
   const page = await context.newPage();
@@ -221,7 +222,7 @@ async function scrapeOPS(context: BrowserContext) {
           count++;
           job.id = new URL(job.url).searchParams.get('JobID') || urlId(job.url);
           process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
-          await scrapeDetailsAndSave(context, job, sourceName);
+          await scrapeDetailsAndSave(db, context, job, sourceName);
         }
         console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
         const nextLink = await page.$('#dgSearchResults tr:last-child a:has-text("Next")');
@@ -241,7 +242,7 @@ async function scrapeOPS(context: BrowserContext) {
   }
 }
 
-async function scrapeGC(context: BrowserContext) {
+async function scrapeGC(db: Database, context: BrowserContext) {
   const sourceName = 'Government of Canada';
   console.log(`Scraping ${sourceName} (GC)...`);
   const page = await context.newPage();
@@ -268,7 +269,7 @@ async function scrapeGC(context: BrowserContext) {
           const urlObj = new URL(job.url);
           job.id = urlObj.searchParams.get('poster') || urlId(job.url);
           process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
-          await scrapeDetailsAndSave(context, job, sourceName);
+          await scrapeDetailsAndSave(db, context, job, sourceName);
         }
         console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
         const nextLink = await page.$(`a[href*="requestedPage=${pageNum + 1}"]`);
@@ -288,7 +289,7 @@ async function scrapeGC(context: BrowserContext) {
   }
 }
 
-async function scrapeOracleCloud(context: BrowserContext, url: string, sourceName: string) {
+async function scrapeOracleCloud(db: Database, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (Oracle Cloud)...`);
   const page = await context.newPage();
   try {
@@ -304,7 +305,7 @@ async function scrapeOracleCloud(context: BrowserContext, url: string, sourceNam
     console.log(`[${sourceName}] Found ${summaries.length} potential jobs`);
     for (const job of summaries) {
       const id = job.url.split('/').filter(Boolean).pop()?.split('?')[0] || urlId(job.url);
-      await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
+      await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
       await new Promise(r => setTimeout(r, 1000));
     }
   } catch (err: any) {
@@ -314,7 +315,7 @@ async function scrapeOracleCloud(context: BrowserContext, url: string, sourceNam
   }
 }
 
-async function scrapeWorkday(context: BrowserContext, url: string, sourceName: string) {
+async function scrapeWorkday(db: Database, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (Workday)...`);
   const page = await context.newPage();
   try {
@@ -329,7 +330,7 @@ async function scrapeWorkday(context: BrowserContext, url: string, sourceName: s
     console.log(`[${sourceName}] Found ${summaries.length} jobs`);
     for (const job of summaries) {
       const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
-      await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
+      await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
     }
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
@@ -338,7 +339,7 @@ async function scrapeWorkday(context: BrowserContext, url: string, sourceName: s
   }
 }
 
-async function scrapeNjoyn(context: BrowserContext, url: string, sourceName: string) {
+async function scrapeNjoyn(db: Database, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (Njoyn)...`);
   const page = await context.newPage();
   try {
@@ -353,7 +354,7 @@ async function scrapeNjoyn(context: BrowserContext, url: string, sourceName: str
     console.log(`[${sourceName}] Found ${summaries.length} jobs`);
     for (const job of summaries) {
       const id = new URL(job.url).searchParams.get('jobid') || job.url.split('/').filter(Boolean).pop() || urlId(job.url);
-      await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
+      await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
     }
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
@@ -362,7 +363,7 @@ async function scrapeNjoyn(context: BrowserContext, url: string, sourceName: str
   }
 }
 
-async function scrapeHRSmart(context: BrowserContext, url: string, sourceName: string) {
+async function scrapeHRSmart(db: Database, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (HRSmart)...`);
   const page = await context.newPage();
   try {
@@ -382,7 +383,7 @@ async function scrapeHRSmart(context: BrowserContext, url: string, sourceName: s
           count++;
           const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
           process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
-          await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
+          await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
         }
         console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
         const nextBtn = await page.$('a.paginateNext, a:has-text("»"), a.next, a[rel="next"]');
@@ -403,7 +404,7 @@ async function scrapeHRSmart(context: BrowserContext, url: string, sourceName: s
   }
 }
 
-async function scrapeICIMS(context: BrowserContext, url: string, sourceName: string) {
+async function scrapeICIMS(db: Database, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (iCIMS)...`);
   const page = await context.newPage();
   try {
@@ -419,7 +420,7 @@ async function scrapeICIMS(context: BrowserContext, url: string, sourceName: str
     console.log(`[${sourceName}] Found ${summaries.length} jobs`);
     for (const job of summaries) {
       const id = new URL(job.url).searchParams.get('job') || urlId(job.url);
-      await scrapeDetailsAndSave(context, { ...job, id }, sourceName);
+      await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
     }
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
@@ -428,7 +429,7 @@ async function scrapeICIMS(context: BrowserContext, url: string, sourceName: str
   }
 }
 
-async function scrapeWaterfront(context: BrowserContext) {
+async function scrapeWaterfront(db: Database, context: BrowserContext) {
   const sourceName = 'Waterfront Toronto';
   console.log(`Scraping ${sourceName}...`);
   const page = await context.newPage();
@@ -437,7 +438,7 @@ async function scrapeWaterfront(context: BrowserContext) {
     const jobLinks = await page.$$eval('a', as => as.filter(a => a.innerText.toLowerCase().includes('view the job posting')).map(a => ({ title: a.parentElement?.innerText.split('\n')[0] || 'Job Posting', url: (a as HTMLAnchorElement).href })));
     for (const job of jobLinks) {
       if (!job.url.includes('waterfrontoronto.ca')) continue;
-      await scrapeDetailsAndSave(context, { id: job.url.split('/').filter(Boolean).pop() || urlId(job.url), title: job.title, url: job.url }, sourceName);
+      await scrapeDetailsAndSave(db, context, { id: job.url.split('/').filter(Boolean).pop() || urlId(job.url), title: job.title, url: job.url }, sourceName);
     }
   } catch (err: any) {
     console.error(`Error scraping Waterfront: ${err.message}`);
@@ -450,33 +451,34 @@ async function main() {
   console.log('Launching browser (non-headless)...');
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext(BASE_CONFIG);
+  const db = await initDb();
 
   console.log('--- STARTING SCRAPE RUN ---');
-  
+
   // 1. Federal & Provincial
-  await scrapeGC(context);
-  await scrapeOPS(context);
-  
+  await scrapeGC(db, context);
+  await scrapeOPS(db, context);
+
   // 2. High Value Agencies
-  await scrapeOracleCloud(context, 'https://ehtc.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?mode=location', 'Metrolinx');
-  await scrapeSuccessFactors(context, 'https://careers.ttc.ca/search/', 'TTC', 'https://careers.ttc.ca');
-  await scrapeSuccessFactors(context, 'https://jobs.toronto.ca/jobsatcity/', 'City of Toronto', 'https://jobs.toronto.ca');
-  
+  await scrapeOracleCloud(db, context, 'https://ehtc.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?mode=location', 'Metrolinx');
+  await scrapeSuccessFactors(db, context, 'https://careers.ttc.ca/search/', 'TTC', 'https://careers.ttc.ca');
+  await scrapeSuccessFactors(db, context, 'https://jobs.toronto.ca/jobsatcity/', 'City of Toronto', 'https://jobs.toronto.ca');
+
   // 3. Regional GTHA
-  await scrapeHRSmart(context, 'https://york.hua.hrsmart.com/hr/ats/JobSearch/viewAll', 'York Region');
-  await scrapeICIMS(context, 'https://careers-peelregion.icims.com/jobs/search?ss=1', 'Peel Region');
-  await scrapeSuccessFactors(context, 'https://careers.halton.ca/search/', 'Halton Region', 'https://careers.halton.ca');
-  await scrapeSuccessFactors(context, 'https://jobs.mississauga.ca/search/', 'Mississauga', 'https://jobs.mississauga.ca');
-  
+  await scrapeHRSmart(db, context, 'https://york.hua.hrsmart.com/hr/ats/JobSearch/viewAll', 'York Region');
+  await scrapeICIMS(db, context, 'https://careers-peelregion.icims.com/jobs/search?ss=1', 'Peel Region');
+  await scrapeSuccessFactors(db, context, 'https://careers.halton.ca/search/', 'Halton Region', 'https://careers.halton.ca');
+  await scrapeSuccessFactors(db, context, 'https://jobs.mississauga.ca/search/', 'Mississauga', 'https://jobs.mississauga.ca');
+
   // 4. Municipalities (Workday/Njoyn)
-  await scrapeWorkday(context, 'https://brampton.wd3.myworkdayjobs.com/Brampton_External_Careers', 'City of Brampton');
-  await scrapeNjoyn(context, 'https://vaughan.njoyn.com/cl4/xweb/xweb.asp?tbtoken=ZlpRRhcXCB8GYwF0NyVccitLdGZfcVVMf0gjV1oMExdbW0UZXUcbBhdxcBEbURRTSXUuX30%3D&chk=ZVpaShM%3D&CLID=52423&page=joblisting', 'City of Vaughan');
-  
+  await scrapeWorkday(db, context, 'https://brampton.wd3.myworkdayjobs.com/Brampton_External_Careers', 'City of Brampton');
+  await scrapeNjoyn(db, context, 'https://vaughan.njoyn.com/cl4/xweb/xweb.asp?tbtoken=ZlpRRhcXCB8GYwF0NyVccitLdGZfcVVMf0gjV1oMExdbW0UZXUcbBhdxcBEbURRTSXUuX30%3D&chk=ZVpaShM%3D&CLID=52423&page=joblisting', 'City of Vaughan');
+
   // 5. Specialized
-  await scrapeWaterfront(context);
+  await scrapeWaterfront(db, context);
 
   console.log('\nCleaning up expired jobs...');
-  await cleanupExpiredJobs(await initDb());
+  await cleanupExpiredJobs(db);
 
   console.log('All scraping tasks complete.');
   await browser.close();

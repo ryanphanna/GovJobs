@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Replaced `Math.random()` job ID fallback in SuccessFactors scraper with a deterministic SHA-256 URL hash (`urlId`), preventing duplicate DB rows on re-runs (Linear: AI-29)
 - Hardened `job.title` ID fallbacks in all other scrapers (OPS, GC, Oracle, Workday, Njoyn, HRSmart, iCIMS, Waterfront) with the same URL hash to prevent title-collision duplicates
+- Initialized DB once in `main()` and threaded the handle through all scraper functions, eliminating 200+ redundant `initDb()` calls per run; same fix applied to `api.ts` (Linear: AI-30)
 
 ### Added
 - **DeepSeek AI-Powered Parsing**: Migrated from fragile CSS/Regex parsing to an LLM-driven architecture using DeepSeek V3.
