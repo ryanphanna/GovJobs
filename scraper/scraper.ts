@@ -4,7 +4,7 @@ import { Database } from 'sqlite';
 import { initDb, saveJob, cleanupExpiredJobs } from './db';
 import { parseJobWithAI } from './ai_parser';
 
-function urlId(url: string): string {
+export function urlId(url: string): string {
   return createHash('sha256').update(url).digest('hex').substring(0, 12);
 }
 
@@ -19,7 +19,8 @@ interface JobSummary {
 }
 
 const BASE_CONFIG = {
-  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+  userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  viewport: { width: 1280, height: 800 }
 };
 
 /**
@@ -29,6 +30,12 @@ async function handleRedirections(page: Page, depth = 0): Promise<boolean> {
   if (depth > 3) return false;
 
   const bodyText = await page.textContent('body');
+  
+  // Real login walls, not just bot warnings
+  if (bodyText?.includes('Sign in with your GCKey') || bodyText?.includes('GCKey login')) {
+    console.warn(`   ⚠️ [Login] Required for: ${page.url()}`);
+    return false;
+  }
 
   const isWarningPage = bodyText?.includes('leave the GC Jobs') || 
                         bodyText?.includes('quitter le site') ||
@@ -39,15 +46,15 @@ async function handleRedirections(page: Page, depth = 0): Promise<boolean> {
     const externalLink = await page.$$eval('main a, #content a, .center-block a, .external-link a', as => {
       return as.filter(a => {
         const href = (a as HTMLAnchorElement).href;
-        return href.startsWith('http') &&
-               !href.includes('cfp-psc.gc.ca') &&
-               !href.includes('#') &&
+        return href.startsWith('http') && 
+               !href.includes('cfp-psc.gc.ca') && 
+               !href.includes('#') && 
                !href.includes('mailto');
       }).map(a => (a as HTMLAnchorElement).href);
     });
 
     if (externalLink.length > 0 && externalLink[0]) {
-      console.log(`   [Redirect Lvl ${depth + 1}] Following external link: ${externalLink[0]}`);
+      console.log(`   [Redirect Lvl ${depth + 1}] ${externalLink[0].substring(0, 50)}...`);
       await page.goto(externalLink[0], { waitUntil: 'networkidle', timeout: 60000 });
       await page.waitForTimeout(5000);
       return await handleRedirections(page, depth + 1);
@@ -56,7 +63,7 @@ async function handleRedirections(page: Page, depth = 0): Promise<boolean> {
   return depth > 0;
 }
 
-async function scrapeDetailsAndSave(db: Database, context: BrowserContext, job: JobSummary, sourceName: string) {
+export async function scrapeDetailsAndSave(db: Database, context: BrowserContext, job: JobSummary, sourceName: string) {
   const page = await context.newPage();
   try {
     await page.goto(job.url, { waitUntil: 'networkidle', timeout: 45000 });
@@ -106,13 +113,13 @@ async function scrapeDetailsAndSave(db: Database, context: BrowserContext, job: 
         console.error(`\n   ❌ AI failed: ${job.title}`);
     }
   } catch (err: any) {
-    console.warn(`   ⚠️  [${sourceName}] Failed ${job.url}: ${err.message}`);
+    console.warn(`\n   ⚠️  [${sourceName}] Failed ${job.url}: ${err.message}`);
   } finally {
     await page.close();
   }
 }
 
-async function scrapeSuccessFactors(db: Database, context: BrowserContext, url: string, sourceName: string, baseUrl: string) {
+export async function scrapeSuccessFactors(db: Database, context: BrowserContext, url: string, sourceName: string, baseUrl: string) {
   console.log(`Scraping ${sourceName} (SuccessFactors)...`);
   const page = await context.newPage();
   try {
@@ -310,7 +317,7 @@ async function scrapeOracleCloud(db: Database, context: BrowserContext, url: str
     await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(15000);
 
-    // Click "Show more" until it disappears, loading all jobs onto the page
+    // Click "Show more" until it disappears
     let loadMore = true;
     while (loadMore) {
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -344,14 +351,13 @@ async function scrapeOracleCloud(db: Database, context: BrowserContext, url: str
   }
 }
 
-async function scrapeWorkday(db: Database, context: BrowserContext, url: string, sourceName: string) {
+export async function scrapeWorkday(db: Database, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (Workday)...`);
   const page = await context.newPage();
   try {
     await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(10000);
 
-    // Click "Load more jobs" until all postings are on the page
     let loadMore = true;
     while (loadMore) {
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -419,6 +425,31 @@ async function scrapeNjoyn(db: Database, context: BrowserContext, url: string, s
       } else {
         hasNextPage = false;
       }
+    }
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapePJB(db: Database, context: BrowserContext) {
+  const sourceName = 'Partnership Job Board';
+  console.log(`Scraping ${sourceName}...`);
+  const page = await context.newPage();
+  try {
+    await page.goto('https://partnershipjobs.ca/postings/', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(5000);
+    const summaries = await page.evaluate(() => {
+        const links = Array.from(document.querySelectorAll('a[href*="/job/"]'));
+        return links.map(l => ({ title: l.textContent?.trim() || '', url: (l as HTMLAnchorElement).href }))
+                    .filter(j => j.title.length > 5 && j.url && !j.url.includes('/postings/'));
+    });
+
+    console.log(`[${sourceName}] Found ${summaries.length} potential jobs`);
+    for (const job of summaries) {
+      const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
+      await scrapeDetailsAndSave(db, context, { ...job, id }, sourceName);
     }
   } catch (err: any) {
     console.error(`Error scraping ${sourceName}: ${err.message}`);
@@ -518,7 +549,7 @@ async function scrapeICIMS(db: Database, context: BrowserContext, url: string, s
   }
 }
 
-async function scrapeWaterfront(db: Database, context: BrowserContext) {
+export async function scrapeWaterfront(db: Database, context: BrowserContext) {
   const sourceName = 'Waterfront Toronto';
   console.log(`Scraping ${sourceName}...`);
   const page = await context.newPage();
@@ -551,7 +582,7 @@ async function main() {
 
   // 2. High Value Agencies
   await scrapeOracleCloud(db, context, 'https://ehtc.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?mode=location', 'Metrolinx');
-  await scrapeSuccessFactors(db, context, 'https://careers.ttc.ca/search/', 'TTC', 'https://careers.ttc.ca');
+  await scrapeSuccessFactors(db, context, 'https://career17.sapsf.com/careers?company=TTC', 'TTC', 'https://career17.sapsf.com');
   await scrapeSuccessFactors(db, context, 'https://jobs.toronto.ca/jobsatcity/', 'City of Toronto', 'https://jobs.toronto.ca');
 
   // 3. Regional GTHA
@@ -564,7 +595,11 @@ async function main() {
   await scrapeWorkday(db, context, 'https://brampton.wd3.myworkdayjobs.com/Brampton_External_Careers', 'City of Brampton');
   await scrapeNjoyn(db, context, 'https://vaughan.njoyn.com/cl4/xweb/xweb.asp?tbtoken=ZlpRRhcXCB8GYwF0NyVccitLdGZfcVVMf0gjV1oMExdbW0UZXUcbBhdxcBEbURRTSXUuX30%3D&chk=ZVpaShM%3D&CLID=52423&page=joblisting', 'City of Vaughan');
 
-  // 5. Specialized
+  // 5. Libraries
+  await scrapeNjoyn(db, context, 'https://tpl.njoyn.com/CL/xweb/xweb.asp?page=joblisting&CLID=124455', 'Toronto Public Library');
+  await scrapePJB(db, context);
+
+  // 6. Specialized
   await scrapeWaterfront(db, context);
 
   console.log('\nCleaning up expired jobs...');
@@ -574,4 +609,6 @@ async function main() {
   await browser.close();
 }
 
-main().catch(console.error);
+if (require.main === module) {
+  main().catch(console.error);
+}

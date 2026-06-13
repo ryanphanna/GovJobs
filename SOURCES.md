@@ -26,6 +26,12 @@ This document tracks all active portals currently monitored by the Navigator Fee
 | **Peel Region** | iCIMS | [Careers](https://careers-peelregion.icims.com/) |
 | **Halton Region** | SuccessFactors | [Careers](https://careers.halton.ca/) |
 
+## 📚 Libraries
+| Source | Portal Type | URL |
+| :--- | :--- | :--- |
+| **Toronto Public Library** | Njoyn | [Library Jobs](https://www.torontopubliclibrary.ca/about-the-library/library-jobs/) |
+| **Partnership Job Board** | Custom (WP) | [OLA / Partnership](https://partnershipjobs.ca/postings/) |
+
 ---
 
 ## 🛠️ Parser Engine
