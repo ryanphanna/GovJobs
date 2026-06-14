@@ -6,30 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
-### Fixed
-- Jobs closing within 7 days now surface to the top of the job list sorted by days remaining; "Closing Soon" home widget shows only active jobs sorted soonest-first; closing dates display as "Xd left" in red when urgent, raw date otherwise; "Closing soon" filter now correctly matches ≤7 days instead of just filtering out "ongoing" (Linear: AI-37)
-- Fixed null `job_title`, `department`, and `description` fields crashing the frontend normalize step silently, resulting in an empty job list
-- Separated scraping from AI parsing into two independent processes: `npm run scrape` (Playwright only, no AI) and `npm run parse` (concurrent DeepSeek parsing from staged raw text); raw job text is staged in a new `raw_jobs` table; parser runs 5 jobs concurrently; full run time expected to drop from ~2 hours to ~15 minutes total
-- Fixed TTC careers URL: `careers.ttc.ca` is defunct; updated to `career17.sapsf.com/career?company=TTCPRODUCTION` with correct SuccessFactors path (Linear: AI-40)
-- Replaced `Math.random()` job ID fallback in SuccessFactors scraper with a deterministic SHA-256 URL hash (`urlId`), preventing duplicate DB rows on re-runs (Linear: AI-29)
-- Hardened `job.title` ID fallbacks in all other scrapers (OPS, GC, Oracle, Workday, Njoyn, HRSmart, iCIMS, Waterfront) with the same URL hash to prevent title-collision duplicates
-- Initialized DB once in `main()` and threaded the handle through all scraper functions, eliminating 200+ redundant `initDb()` calls per run; same fix applied to `api.ts` (Linear: AI-30)
-- Replaced silent catch in `scrapeDetailsAndSave` with a `console.warn` so scraping failures are now visible in the console (Linear: AI-34)
-- `reset()` now clears the inventory toggle, making logo-click and the Reset button consistent (Linear: AI-36)
-- Wrapped `jobsByCompany` and `companies` in `useMemo` to avoid recomputing on every render (Linear: AI-38)
-- API base URL extracted to `VITE_API_URL` env variable with `localhost:3001` fallback (Linear: AI-39)
-- Sanitize job descriptions with DOMPurify before rendering via `dangerouslySetInnerHTML`, preventing potential XSS from scraped content (Linear: AI-35)
-- Added pagination to Oracle Cloud (scroll-and-load-more loop), Workday (`loadMoreButton` loop), Njoyn, and iCIMS scrapers — all four previously stopped after the first page of results (Linear: AI-33)
-- Fixed `salary_range` always being stored as `" -  (yearly)"` when AI returns null salary; now stores an empty string and the UI check no longer uses the broken `!== 'null'` comparison (Linear: AI-32)
-- Replaced arbitrary 2-hour expiry window with a run-start timestamp — `cleanupExpiredJobs` now marks only jobs not touched by the current run as inactive, so no job can flicker mid-run regardless of how long the scrape takes (Linear: AI-31)
-
 ### Added
-- **DeepSeek AI-Powered Parsing**: Migrated from fragile CSS/Regex parsing to an LLM-driven architecture using DeepSeek V3.
-  - Achieved **100% reliability** on complex field extractions (numerical salary ranges, union affiliations, closing dates).
-  - High-fidelity **Markdown Normalization**: Job descriptions are now automatically stripped of legal/equity boilerplate and converted to clean Markdown.
-  - Intelligent **Normalization**: AI now handles cleaning job titles (stripping internal codes), classifying work models (Hybrid/Remote/On-site), and extracting benefit lists.
-  - Significant cost optimization: AI parsing costs reduced to **~$0.0005 per job**.
-- New **Government of Canada (GC)** scraper support (federal jobs via PSC portal).
+- **DeepSeek V4-Flash Integration**: Upgraded parsing engine to the latest V4-Flash model, achieving improved extraction quality and reduced latency.
+- **Dynamic Date Injection**: Prompt logic now dynamically injects the current date, ensuring 100% accurate calculation of relative closing dates (e.g., "Closing in 2 weeks").
+- **Toronto Core Focus**: Concentrated scraper execution on high-priority Toronto sources: City of Toronto, TTC, Toronto Public Library, Metrolinx, and Waterfront Toronto.
+- **Recursive Redirection Handling**: Robust handling for government portals (GC/OPS) that follow interstitial "Leaving site" pages up to 3 levels deep.
+- **Automated Scheduling**: Configured GitHub Actions for bi-weekly scraping (Mon/Thu) with secure secret management.
+- **Toronto Public Library (TPL) Scraper**: New scraper for TPL jobs via the Njoyn portal.
+
+### Changed
+- Migrated from fragile CSS/Regex parsing to a unified, AI-driven architecture for structured data extraction.
+- **Rich Schema Support**: Database and parser now capture numerical salary ranges, work models (Hybrid/Remote), and specific benefits.
+- Updated browser stealth configuration with modern User Agent strings to bypass fake login walls.
+
+### Fixed
+- Resolved hardcoded reference date bug in AI prompts that would have degraded future data integrity.
+- Fixed duplicate variable declarations in `ai_parser.ts`.
+- Replaced over-sensitive "Internal Job" guards that were incorrectly blocking public government postings.
+
 ...
 - New **Province of Ontario (OPS)** scraper support (provincial jobs via gojobs portal).
 - New **Peel Region** scraper support (iCIMS portal).
