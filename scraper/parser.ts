@@ -54,11 +54,12 @@ async function main() {
   }
 
   // Expire jobs that weren't in the current scrape run
-  const runMeta = await db.get<{ started_at: string }>(
+  const runMetaResult = await db.execute(
     `SELECT MIN(scraped_at) as started_at FROM raw_jobs WHERE scraped_at > datetime('now', '-12 hours')`
   );
-  if (runMeta?.started_at) {
-    await cleanupExpiredJobs(db, runMeta.started_at);
+  const startedAt = runMetaResult.rows[0]?.started_at as string | null;
+  if (startedAt) {
+    await cleanupExpiredJobs(db, startedAt);
     console.log('\n[Parser] Expired stale jobs.');
   }
 

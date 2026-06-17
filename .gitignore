@@ -4,4 +4,22 @@ dist
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal
+*.sqlite-shm
 .env
+
+# debug artifacts
+*.png
+*.json
+scraper/debug_*.ts
+scraper/probe_*.ts
+scraper/find_*.ts
+scraper/hunt_*.ts
+scraper/test_*.ts
+scraper/trace_*.ts
+scraper/harvest_*.ts
+scraper/brute_*.ts
+scraper/fetch_*.ts
+scraper/fix_*.ts
+scraper/list_*.ts
+scraper/backfill_*.ts
+scraper/clean_*.ts

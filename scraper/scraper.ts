@@ -1,6 +1,6 @@
 import { chromium, Page, BrowserContext } from 'playwright';
 import { createHash } from 'crypto';
-import { Database } from 'sqlite';
+import { Client } from '@libsql/client';
 import { initDb, saveRawJob, cleanupExpiredJobs } from './db';
 
 export function urlId(url: string): string {
@@ -62,7 +62,7 @@ async function handleRedirections(page: Page, depth = 0): Promise<boolean> {
   return depth > 0;
 }
 
-export async function scrapeRawAndStage(db: Database, context: BrowserContext, job: JobSummary, sourceName: string) {
+export async function scrapeRawAndStage(db: Client, context: BrowserContext, job: JobSummary, sourceName: string) {
   const page = await context.newPage();
   try {
     await page.goto(job.url, { waitUntil: 'networkidle', timeout: 45000 });
@@ -89,7 +89,7 @@ export async function scrapeRawAndStage(db: Database, context: BrowserContext, j
   }
 }
 
-export async function scrapeSuccessFactors(db: Database, context: BrowserContext, url: string, sourceName: string, baseUrl: string) {
+export async function scrapeSuccessFactors(db: Client, context: BrowserContext, url: string, sourceName: string, baseUrl: string) {
   console.log(`Scraping ${sourceName} (SuccessFactors)...`);
   const page = await context.newPage();
   try {
@@ -167,7 +167,7 @@ export async function scrapeSuccessFactors(db: Database, context: BrowserContext
   }
 }
 
-async function scrapeOPS(db: Database, context: BrowserContext) {
+async function scrapeOPS(db: Client, context: BrowserContext) {
   const sourceName = 'Province of Ontario';
   console.log(`Scraping ${sourceName} (OPS)...`);
   const page = await context.newPage();
@@ -222,7 +222,7 @@ async function scrapeOPS(db: Database, context: BrowserContext) {
   }
 }
 
-async function scrapeGC(db: Database, context: BrowserContext) {
+async function scrapeGC(db: Client, context: BrowserContext) {
   const sourceName = 'Government of Canada';
   console.log(`Scraping ${sourceName} (GC)...`);
   const page = await context.newPage();
@@ -280,7 +280,7 @@ async function scrapeGC(db: Database, context: BrowserContext) {
   }
 }
 
-async function scrapeOracleCloud(db: Database, context: BrowserContext, url: string, sourceName: string) {
+async function scrapeOracleCloud(db: Client, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (Oracle Cloud)...`);
   const page = await context.newPage();
   try {
@@ -321,7 +321,7 @@ async function scrapeOracleCloud(db: Database, context: BrowserContext, url: str
   }
 }
 
-export async function scrapeWorkday(db: Database, context: BrowserContext, url: string, sourceName: string) {
+export async function scrapeWorkday(db: Client, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (Workday)...`);
   const page = await context.newPage();
   try {
@@ -359,7 +359,7 @@ export async function scrapeWorkday(db: Database, context: BrowserContext, url: 
   }
 }
 
-async function scrapeNjoyn(db: Database, context: BrowserContext, url: string, sourceName: string) {
+async function scrapeNjoyn(db: Client, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (Njoyn)...`);
   const page = await context.newPage();
   try {
@@ -403,7 +403,7 @@ async function scrapeNjoyn(db: Database, context: BrowserContext, url: string, s
   }
 }
 
-async function scrapePJB(db: Database, context: BrowserContext) {
+async function scrapePJB(db: Client, context: BrowserContext) {
   const sourceName = 'Partnership Job Board';
   console.log(`Scraping ${sourceName}...`);
   const page = await context.newPage();
@@ -428,7 +428,7 @@ async function scrapePJB(db: Database, context: BrowserContext) {
   }
 }
 
-async function scrapeHRSmart(db: Database, context: BrowserContext, url: string, sourceName: string) {
+async function scrapeHRSmart(db: Client, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (HRSmart)...`);
   const page = await context.newPage();
   try {
@@ -469,7 +469,7 @@ async function scrapeHRSmart(db: Database, context: BrowserContext, url: string,
   }
 }
 
-async function scrapeICIMS(db: Database, context: BrowserContext, url: string, sourceName: string) {
+async function scrapeICIMS(db: Client, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (iCIMS)...`);
   const page = await context.newPage();
   try {
@@ -519,7 +519,7 @@ async function scrapeICIMS(db: Database, context: BrowserContext, url: string, s
   }
 }
 
-export async function scrapeWaterfront(db: Database, context: BrowserContext) {
+export async function scrapeWaterfront(db: Client, context: BrowserContext) {
   const sourceName = 'Waterfront Toronto';
   console.log(`Scraping ${sourceName}...`);
   const page = await context.newPage();
