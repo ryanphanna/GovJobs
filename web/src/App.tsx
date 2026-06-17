@@ -89,7 +89,7 @@ const JobRow = ({ job, onClick }: { job: Job, onClick: () => void }) => (
       padding: '0.4rem 0',
       backgroundColor: 'white',
       borderBottom: '1px solid #f8fafc',
-      cursor: 'pointer',
+      cursor: job.is_active ? 'pointer' : 'default',
       transition: 'opacity 0.1s ease',
       display: 'flex',
       justifyContent: 'space-between',
@@ -97,7 +97,7 @@ const JobRow = ({ job, onClick }: { job: Job, onClick: () => void }) => (
       gap: '2rem',
       opacity: job.is_active ? 1 : 0.6
     }}
-    onMouseEnter={(e) => (e.currentTarget.style.opacity = job.is_active ? '0.7' : '0.4')}
+    onMouseEnter={(e) => (e.currentTarget.style.opacity = job.is_active ? '0.7' : '0.6')}
     onMouseLeave={(e) => (e.currentTarget.style.opacity = job.is_active ? '1' : '0.6')}
   >
     <div style={{ minWidth: 0, flex: 1 }}>
@@ -261,6 +261,7 @@ function App() {
   };
 
   const handleSelectJob = (job: Job) => {
+    if (!job.is_active) return;
     setSelectedJob(job);
     window.history.pushState({ jobId: job.id }, '', `#job/${job.id}`);
   };
