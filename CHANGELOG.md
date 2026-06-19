@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Expired jobs are no longer clickable — card stays visible in the list but detail view is disabled.
+- Upgraded GitHub Actions Node.js runtime from v20 to v24 in both `scrape.yml` and `job_scrape.yml` to resolve runner deprecation warnings.
 
 ## [1.0.0] - 2026-06-17
 
