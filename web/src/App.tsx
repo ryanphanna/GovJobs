@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { inject } from '@vercel/analytics';
 
 const API = import.meta.env.VITE_API_URL ?? '';
-import { Search, MapPin, Building, ExternalLink, ChevronRight, X, DollarSign, ArrowLeft, Users, Zap, Globe, Info, ChevronDown, ChevronUp, Bookmark } from 'lucide-react';
+import { Search, ExternalLink, ChevronRight, X, ArrowLeft, ChevronDown, ChevronUp, Bookmark } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -10,6 +10,15 @@ interface Job {
   department: string;
   location: string;
   salary_range: string;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_period: string | null;
+  work_model: string | null;
+  employment_type: string | null;
+  duration: string | null;
+  is_unionized: number | null;
+  union_name: string | null;
+  benefits: string | null;
   description: string;
   closing_date: string;
   url: string;
@@ -23,13 +32,32 @@ interface Job {
 
 type View = 'home' | 'jobs' | 'saved' | 'companies';
 
-const formatSalary = (raw: string | null): string | null => {
-  if (!raw) return null;
-  const nums = [...raw.matchAll(/[\d,]+(\.\d+)?/g)].map(m => parseFloat(m[0].replace(/,/g, '')));
-  if (nums.length === 0) return null;
-  const fmt = (n: number) => `$${Math.round(n / 1000)}K`;
-  const period = /hour/i.test(raw) ? ' / hr' : /month/i.test(raw) ? ' / mo' : ' / yr';
-  return nums.length >= 2 ? `${fmt(nums[0])} – ${fmt(nums[1])}${period}` : `${fmt(nums[0])}${period}`;
+const renderMarkdown = (md: string): string => {
+  if (!md) return '';
+  return md
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^#{1,2}\s+(.+)$/gm, '<h3 style="font-size:1rem;font-weight:800;margin:1.5em 0 0.4em;color:#0f172a">$1</h3>')
+    .replace(/^#{3,}\s+(.+)$/gm, '<h4 style="font-size:0.875rem;font-weight:700;margin:1em 0 0.3em;color:#1e293b">$1</h4>')
+    .replace(/^[-•]\s+(.+)$/gm, '<li style="margin:0.2em 0">$1</li>')
+    .replace(/(<li[^>]*>[\s\S]*?<\/li>)(\s*<li)/g, '$1$2')
+    .replace(/((?:<li[^>]*>.*<\/li>\s*)+)/g, '<ul style="padding-left:1.25em;margin:0.5em 0">$1</ul>')
+    .replace(/\n{2,}/g, '</p><p style="margin:0.75em 0">')
+    .replace(/\n/g, '<br>')
+    .replace(/^(?!<[hup])/, '<p style="margin:0">')
+    .replace(/(?<![>])$/, '</p>');
+};
+
+const formatSalary = (job: Job): string | null => {
+  const min = job.salary_min;
+  const max = job.salary_max;
+  const period = job.salary_period;
+  if (!min && !max) return null;
+  const fmt = (n: number) => period === 'hourly' ? `$${n}/hr` : `$${Math.round(n / 1000)}K`;
+  const periodLabel = period === 'hourly' ? '' : period === 'monthly' ? ' / mo' : ' / yr';
+  if (min && max) return `${fmt(min)} – ${fmt(max)}${periodLabel}`;
+  return `${fmt((min ?? max)!)}${periodLabel}`;
 };
 
 
@@ -51,14 +79,6 @@ const fixCasing = (s: string) => {
   return cleaned;
 };
 
-const normalizeMode = (mode: string | null) => {
-  if (!mode) return null;
-  const m = mode.toLowerCase();
-  if (m.includes('hybrid')) return 'Hybrid';
-  if (m.includes('remote') || m.includes('telework')) return 'Remote';
-  if (m.includes('on-site') || m.includes('in person') || m.includes('regular')) return 'In-person';
-  return mode;
-};
 
 const ActionGroup = ({ job, onToggleSave, showBack = false, onBack, showApply = true }: { job: Job, onToggleSave: (e: React.MouseEvent) => void, showBack?: boolean, onBack?: () => void, showApply?: boolean }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
@@ -302,39 +322,18 @@ function App() {
   };
 
   const parseJobDetails = (job: Job) => {
-    const desc = job.description || '';
-    const cleanDesc = desc.replace(/<[^>]*>?/gm, ' ');
-
-    const extract = (key: string) => {
-      const match = cleanDesc.match(new RegExp(`${key}:?\\s*([^\\n\\r]*)`, 'i'));
-      let val = match ? match[1]?.trim() : null;
-      if (val) {
-        val = val.replace(/^[,.\s]+/, '');
-        if (key.toLowerCase().includes('salary')) {
-           val = val.replace(/Information:?/gi, '').replace(/Job Opportunity/gi, '').trim();
-           // Try to extract just the monetary range (e.g. $50,000 to $60,000)
-           const moneyMatch = val.match(/\$?\d{2,3},?\d{3}(\.\d{2})?(\s*(to|-|–|and)\s*\$?\d{2,3},?\d{3}(\.\d{2})?)?/i);
-           if (moneyMatch) {
-               val = moneyMatch[0];
-           } else if (val.length > 50) {
-               // Fallback if no money format but string is too long
-               val = val.substring(0, 50) + '...';
-           }
-        }
-        if (key.toLowerCase().includes('vacancies')) {
-           const numMatch = val.match(/\d+/);
-           val = numMatch ? numMatch[0] : null; // Only return if numeric
-        }
-      }
-      return val;
-    };
-
+    const benefits = (() => {
+      try { const b = JSON.parse(job.benefits || '[]'); return Array.isArray(b) && b.length ? b.join(', ') : null; }
+      catch { return null; }
+    })();
     return {
-      salary: extract('Salary Scale') || extract('Salary Range') || extract('Salary') || job.salary_range || null,
-      mode: normalizeMode(extract('Work Mode') || extract('Employment Type')),
-      vacancies: extract('Number of Vacancies') || extract('No. of Vacancies') || extract('Vacancies'),
-      reqId: extract('Requisition ID') || extract('Job ID') || extract('Req ID'),
-      future: desc.toLowerCase().includes('future requirements') ? 'Eligible for future requirements' : null,
+      salary: formatSalary(job),
+      mode: job.work_model === 'On-site' ? 'In-person' : (job.work_model || null),
+      type: job.employment_type || null,
+      duration: job.duration || null,
+      union: job.is_unionized ? (job.union_name || 'Unionized') : null,
+      benefits,
+      future: (job.description || '').toLowerCase().includes('future requirements') ? 'Eligible for future requirements' : null,
     };
   };
 
@@ -516,17 +515,19 @@ function App() {
 
               <div style={{ backgroundColor: 'white', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 {[
-                  { label: 'Department', val: selectedJob.department, icon: Building },
-                  { label: 'Location', val: selectedJob.location, icon: MapPin },
-                  { label: 'Salary', val: formatSalary(currentJobDetails?.salary ?? null), icon: DollarSign },
-                  { label: 'Work Mode', val: currentJobDetails?.mode, icon: Globe },
-                  { label: 'Vacancies', val: currentJobDetails?.vacancies, icon: Users },
-                  { label: 'Req ID', val: currentJobDetails?.reqId, icon: Info },
-                  { label: 'Eligibility', val: currentJobDetails?.future, icon: Zap, highlight: true }
+                  { label: 'Department', val: selectedJob.department },
+                  { label: 'Location', val: selectedJob.location },
+                  { label: 'Salary', val: currentJobDetails?.salary },
+                  { label: 'Work Mode', val: currentJobDetails?.mode },
+                  { label: 'Employment', val: currentJobDetails?.type },
+                  { label: 'Duration', val: currentJobDetails?.duration },
+                  { label: 'Union', val: currentJobDetails?.union },
+                  { label: 'Benefits', val: currentJobDetails?.benefits },
+                  { label: 'Eligibility', val: currentJobDetails?.future, highlight: true }
                 ].filter(i => i.val).map(item => (
                   <div key={item.label}>
                     <div style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.15rem' }}>{item.label}</div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', color: item.highlight ? '#9a3412' : '#1e293b', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: (item as {highlight?: boolean}).highlight ? '#9a3412' : '#1e293b', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                       {item.val}
                     </div>
                   </div>
@@ -554,6 +555,15 @@ function App() {
                   <ExternalLink size={15} />
                   View Full Posting
                 </a>
+
+                {selectedJob.description && (
+                  <div style={{ marginTop: '2.5rem', borderTop: '1px solid #f1f5f9', paddingTop: '2rem' }}>
+                    <div
+                      style={{ fontSize: '0.9rem', lineHeight: 1.7, color: '#334155' }}
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(selectedJob.description) }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

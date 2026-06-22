@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Salary now displayed in `$88K – $110K / yr` format instead of raw decimal strings.
 - Added "View Full Posting" button linking to original job URL; removed raw description display.
 - Added "See more →" under both home page sections; Recent Postings navigates to jobs sorted newest-first, Closing Soon navigates with the closing-soon filter active (soonest deadline on top).
+- Job detail body now renders AI-cleaned description as formatted HTML (headings, bold, bullet lists) instead of raw markdown text.
+- Job detail sidebar now reads structured DB fields directly (work_model, employment_type, duration, union_name, benefits) instead of regex-parsing description text — fields actually populate now.
 
 ### Fixed
 - Fixed nav bar vertical alignment — all items now center-aligned instead of baseline-aligned.
