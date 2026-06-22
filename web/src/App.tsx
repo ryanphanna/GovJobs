@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import DOMPurify from 'dompurify';
+import { inject } from '@vercel/analytics';
 
 const API = import.meta.env.VITE_API_URL ?? '';
 import { Search, MapPin, Building, ExternalLink, ChevronRight, X, DollarSign, ArrowLeft, Users, Zap, Globe, Info, ChevronDown, ChevronUp, Bookmark } from 'lucide-react';
@@ -171,6 +172,8 @@ const FilterButton = ({ label, active, onClick }: { label: string, active: boole
     {label}
   </button>
 );
+
+inject();
 
 function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
