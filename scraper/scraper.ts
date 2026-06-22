@@ -539,8 +539,9 @@ export async function scrapeWaterfront(db: Client, context: BrowserContext) {
 
 async function main() {
   const runStartedAt = new Date().toISOString();
-  console.log('Launching browser (non-headless)...');
-  const browser = await chromium.launch({ headless: false });
+  const headless = !process.env.DISPLAY && process.env.CI !== 'false';
+  console.log(`Launching browser (headless: ${headless})...`);
+  const browser = await chromium.launch({ headless });
   const context = await browser.newContext(BASE_CONFIG);
   const db = await initDb();
 
@@ -576,5 +577,5 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch(console.error);
+  main().catch(err => { console.error(err); process.exit(1); });
 }

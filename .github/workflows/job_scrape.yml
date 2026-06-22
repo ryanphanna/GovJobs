@@ -8,7 +8,7 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    
+
     steps:
       - uses: actions/checkout@v4
 
@@ -27,13 +27,16 @@ jobs:
 
       - name: Run Scraper
         env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           AI_MODEL: "deepseek-chat"
         run: cd scraper && npx tsx scraper.ts
 
-      - name: Upload jobs.sqlite
-        uses: actions/upload-artifact@v4
-        with:
-          name: jobs-database
-          path: jobs.sqlite
-          retention-days: 7
+      - name: Run Parser
+        env:
+          TURSO_URL: ${{ secrets.TURSO_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          AI_MODEL: "deepseek-chat"
+        run: cd scraper && npx tsx parser.ts
