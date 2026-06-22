@@ -301,11 +301,18 @@ async function scrapeOracleCloud(db: Client, context: BrowserContext, url: strin
       }
     }
 
-    const summaries = await page.$$eval('.job-tile, .job-card, li[role="listitem"]', (items) => {
+    const summaries = await page.$$eval('div.job-tile, .job-card, li[role="listitem"]', (items) => {
         return items.map(item => {
-            const link = item.querySelector('a');
-            return link ? { title: link.textContent?.trim() || '', url: (link as HTMLAnchorElement).href } : null;
-        }).filter(j => j && j.title && !j.url.includes('javascript:')) as { title: string, url: string }[];
+            const link = item.querySelector('a.job-list-item__link, a[href*="/job/"], a') as HTMLAnchorElement | null;
+            if (!link || !link.href || link.href.includes('javascript:')) return null;
+            // Title is in a sibling element, not inside the <a> — use aria-labelledby or container text
+            const labelId = link.getAttribute('aria-labelledby');
+            const titleEl = (labelId ? document.getElementById(labelId) : null)
+              || item.querySelector('[class*="title"], h2, h3, h4')
+              || item;
+            const title = titleEl?.textContent?.trim().split('\n')[0].trim() || '';
+            return title ? { title, url: link.href } : null;
+        }).filter(j => j && j.title) as { title: string, url: string }[];
     });
 
     console.log(`[${sourceName}] Found ${summaries.length} jobs`);
@@ -553,7 +560,7 @@ async function main() {
   await scrapeOracleCloud(db, context, 'https://ehtc.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs?mode=location', 'Metrolinx');
 
   // 2. Libraries & Specialized
-  await scrapeNjoyn(db, context, 'https://tpl.njoyn.com/CL/xweb/xweb.asp?page=joblisting&CLID=124455', 'Toronto Public Library');
+  // TPL (Njoyn) blocked by Radware bot protection — cannot scrape headlessly
   await scrapeWaterfront(db, context);
 
   /* 

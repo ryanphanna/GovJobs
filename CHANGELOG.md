@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [Unreleased]
+
+### Fixed
+- Fixed Metrolinx (Oracle Cloud) returning 0 jobs — the `<a>` tag has no text content; title lives in a sibling element referenced by `aria-labelledby`. Selector updated to `div.job-tile` and title extraction now uses `aria-labelledby` target or nearest heading.
+- Removed Toronto Public Library (Njoyn) from active scraping — blocked by Radware bot protection at the network level (redirects to `validate.perfdrive.com`); headless Playwright cannot pass the challenge.
+
 ## [1.0.1] - 2026-06-22
 
 ### Fixed
