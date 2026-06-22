@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Company name in job detail view is now clickable — navigates to Companies view filtered by that source.
 - Salary now displayed in `$88K – $110K / yr` format instead of raw decimal strings.
 - Added "View Full Posting" button linking to original job URL; removed raw description display.
+- Added "See more →" under both home page sections; Recent Postings navigates to jobs sorted newest-first, Closing Soon navigates with the closing-soon filter active (soonest deadline on top).
 
 ### Fixed
 - Fixed nav bar vertical alignment — all items now center-aligned instead of baseline-aligned.

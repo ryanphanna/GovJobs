@@ -196,6 +196,7 @@ function App() {
   const [selectedModes, setSelectedModes] = useState<string[]>([]);
   const [closingSoon, setClosingSoon] = useState(false);
   const [showInventories, setShowInventories] = useState(false);
+  const [sortNewest, setSortNewest] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -359,6 +360,7 @@ function App() {
       }
       return matchesSearch && matchesMode && matchesSalary && matchesDeadline;
     });
+    if (sortNewest) return filtered.sort((a, b) => b.scraped_at.localeCompare(a.scraped_at));
     return filtered.sort((a, b) => {
       const dA = daysUntilClose(a.closing_date);
       const dB = daysUntilClose(b.closing_date);
@@ -366,10 +368,10 @@ function App() {
       const urgentB = dB !== null && dB >= 0 && dB <= 7;
       if (urgentA && !urgentB) return -1;
       if (!urgentA && urgentB) return 1;
-      if (urgentA && urgentB) return dA - dB;
+      if (urgentA && urgentB) return (dA ?? 0) - (dB ?? 0);
       return b.scraped_at.localeCompare(a.scraped_at);
     });
-  }, [jobs, searchTerm, selectedModes, minSalary, closingSoon, currentView, showInventories]);
+  }, [jobs, searchTerm, selectedModes, minSalary, closingSoon, currentView, showInventories, sortNewest]);
 
   const recentJobs = useMemo(() => [...jobs].sort((a, b) => b.scraped_at.localeCompare(a.scraped_at)).slice(0, 5), [jobs]);
   const closingSoonJobs = useMemo(() => {
@@ -392,7 +394,7 @@ function App() {
   const currentJobDetails = useMemo(() => selectedJob ? parseJobDetails(selectedJob) : null, [selectedJob]);
 
   const reset = () => {
-    setSelectedJob(null); setCurrentView('home'); setSearchTerm(''); setSelectedModes([]); setMinSalary(null); setClosingSoon(false); setShowInventories(false); setIsSearchExpanded(false);
+    setSelectedJob(null); setCurrentView('home'); setSearchTerm(''); setSelectedModes([]); setMinSalary(null); setClosingSoon(false); setShowInventories(false); setIsSearchExpanded(false); setSortNewest(false);
     window.history.pushState(null, '', '#');
   };
 
@@ -567,7 +569,7 @@ function App() {
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {recentJobs.map(job => <JobRow key={job.id} job={job} onClick={() => handleSelectJob(job)} />)}
                 </div>
-                <button onClick={() => handleNavigate('jobs')} style={{ marginTop: '2rem', border: 'none', backgroundColor: 'transparent', color: '#2563eb', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem', padding: 0 }}>View all jobs →</button>
+                <button onClick={() => { setSortNewest(true); setClosingSoon(false); handleNavigate('jobs'); }} style={{ marginTop: '2rem', border: 'none', backgroundColor: 'transparent', color: '#2563eb', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem', padding: 0 }}>See more →</button>
               </section>
 
               <section>
@@ -577,6 +579,7 @@ function App() {
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   {closingSoonJobs.map(job => <JobRow key={job.id} job={job} onClick={() => handleSelectJob(job)} />)}
                 </div>
+                <button onClick={() => { setSortNewest(false); setClosingSoon(true); handleNavigate('jobs'); }} style={{ marginTop: '2rem', border: 'none', backgroundColor: 'transparent', color: '#2563eb', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem', padding: 0 }}>See more →</button>
               </section>
             </div>
           ) : (
