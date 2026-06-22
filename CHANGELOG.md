@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-## [Unreleased]
+## [1.1.0] - 2026-06-22
+
+### Added
+- Deployed web frontend to Vercel with Vercel Functions serving `/api/jobs` and `/api/jobs/[id]/toggle-save` backed by Turso.
+- Added Vercel Analytics.
 
 ### Fixed
 - Fixed Metrolinx (Oracle Cloud) returning 0 jobs — the `<a>` tag has no text content; title lives in a sibling element referenced by `aria-labelledby`. Selector updated to `div.job-tile` and title extraction now uses `aria-labelledby` target or nearest heading.
