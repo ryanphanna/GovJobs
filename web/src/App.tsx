@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import DOMPurify from 'dompurify';
 
-const API = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+const API = import.meta.env.VITE_API_URL ?? '';
 import { Search, MapPin, Building, Calendar, ExternalLink, Briefcase, LayoutGrid, Building2, ChevronRight, X, DollarSign, Clock, ArrowLeft, Users, Zap, Globe, Filter, ListChecks, Target, Info, ChevronDown, ChevronUp, Bookmark, Sparkles } from 'lucide-react';
 
 interface Job {
