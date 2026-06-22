@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import DOMPurify from 'dompurify';
 
 const API = import.meta.env.VITE_API_URL ?? '';
-import { Search, MapPin, Building, Calendar, ExternalLink, Briefcase, LayoutGrid, Building2, ChevronRight, X, DollarSign, Clock, ArrowLeft, Users, Zap, Globe, Filter, ListChecks, Target, Info, ChevronDown, ChevronUp, Bookmark, Sparkles } from 'lucide-react';
+import { Search, MapPin, Building, ExternalLink, ChevronRight, X, DollarSign, ArrowLeft, Users, Zap, Globe, Info, ChevronDown, ChevronUp, Bookmark } from 'lucide-react';
 
 interface Job {
   id: string;
@@ -174,7 +174,7 @@ const FilterButton = ({ label, active, onClick }: { label: string, active: boole
 
 function App() {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [currentView, setCurrentView] = useState<View>('home');
@@ -189,7 +189,7 @@ function App() {
 
   // Sync state with browser history
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
+    const handlePopState = (_event: PopStateEvent) => {
       const path = window.location.hash;
       if (path.startsWith('#job/')) {
         const id = path.replace('#job/', '');
