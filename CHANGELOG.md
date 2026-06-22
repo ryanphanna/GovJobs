@@ -9,8 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Deployed web frontend to Vercel with Vercel Functions serving `/api/jobs` and `/api/jobs/[id]/toggle-save` backed by Turso.
 - Added Vercel Analytics.
+- Company name in job detail view is now clickable — navigates to Companies view filtered by that source.
+- Salary now displayed in `$88K – $110K / yr` format instead of raw decimal strings.
+- Added "View Full Posting" button linking to original job URL; removed raw description display.
 
 ### Fixed
+- Fixed nav bar vertical alignment — all items now center-aligned instead of baseline-aligned.
+- Fixed sidebar department/location text being cut off — long values now wrap properly.
+- Fixed Saved nav item missing icon — now matches Search with Bookmark icon for visual consistency.
 - Fixed Metrolinx (Oracle Cloud) returning 0 jobs — the `<a>` tag has no text content; title lives in a sibling element referenced by `aria-labelledby`. Selector updated to `div.job-tile` and title extraction now uses `aria-labelledby` target or nearest heading.
 - Removed Toronto Public Library (Njoyn) from active scraping — blocked by Radware bot protection at the network level (redirects to `validate.perfdrive.com`); headless Playwright cannot pass the challenge.
 

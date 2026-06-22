@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import DOMPurify from 'dompurify';
 import { inject } from '@vercel/analytics';
 
 const API = import.meta.env.VITE_API_URL ?? '';
@@ -23,6 +22,16 @@ interface Job {
 }
 
 type View = 'home' | 'jobs' | 'saved' | 'companies';
+
+const formatSalary = (raw: string | null): string | null => {
+  if (!raw) return null;
+  const nums = [...raw.matchAll(/[\d,]+(\.\d+)?/g)].map(m => parseFloat(m[0].replace(/,/g, '')));
+  if (nums.length === 0) return null;
+  const fmt = (n: number) => `$${Math.round(n / 1000)}K`;
+  const period = /hour/i.test(raw) ? ' / hr' : /month/i.test(raw) ? ' / mo' : ' / yr';
+  return nums.length >= 2 ? `${fmt(nums[0])} – ${fmt(nums[1])}${period}` : `${fmt(nums[0])}${period}`;
+};
+
 
 const daysUntilClose = (dateStr: string): number | null => {
   if (!dateStr) return null;
@@ -257,9 +266,10 @@ function App() {
     fetchJobs();
   }, []);
 
-  const handleNavigate = (view: View) => {
+  const handleNavigate = (view: View, companyFilter?: string) => {
     setCurrentView(view);
     setSelectedJob(null);
+    if (companyFilter) setSearchTerm(companyFilter);
     window.history.pushState(null, '', `#${view === 'home' ? '' : view}`);
   };
 
@@ -391,8 +401,8 @@ function App() {
       {/* Universal Sticky Header */}
       <header style={{ borderBottom: '1px solid #f1f5f9', position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 50 }}>
         <div style={{ padding: '2rem 2rem 1.5rem 2rem', maxWidth: '1200px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'baseline', position: 'relative' }}>
-            <div style={{ display: 'grid', gridAutoFlow: 'column', alignItems: 'baseline', justifyContent: 'start', gap: '3rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', position: 'relative' }}>
+            <div style={{ display: 'grid', gridAutoFlow: 'column', alignItems: 'center', justifyContent: 'start', gap: '3rem' }}>
               <h1 onClick={reset} style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, letterSpacing: '-0.04em', cursor: 'pointer', lineHeight: 1 }}>GovJobs</h1>
               
               <nav style={{ 
@@ -418,11 +428,11 @@ function App() {
               </nav>
             </div>
 
-            <div style={{ display: 'grid', gridAutoFlow: 'column', alignItems: 'baseline', gap: '2.5rem' }}>
-              <div style={{ 
+            <div style={{ display: 'grid', gridAutoFlow: 'column', alignItems: 'center', gap: '2.5rem' }}>
+              <div style={{
                 display: 'grid',
                 gridAutoFlow: 'column',
-                alignItems: 'baseline',
+                alignItems: 'center',
                 gap: '2.5rem',
                 fontSize: '1rem', 
                 fontWeight: 600, 
@@ -432,14 +442,15 @@ function App() {
                 visibility: isSearchExpanded ? 'hidden' : 'visible',
                 pointerEvents: isSearchExpanded ? 'none' : 'auto'
               }}>
-                <span 
-                  onClick={() => handleNavigate('saved')} 
-                  style={{ cursor: 'pointer', color: (currentView === 'saved' && !selectedJob) ? '#0f172a' : 'inherit' }}
+                <span
+                  onClick={() => handleNavigate('saved')}
+                  style={{ cursor: 'pointer', display: 'grid', gridAutoFlow: 'column', alignItems: 'center', gap: '0.4rem', color: (currentView === 'saved' && !selectedJob) ? '#0f172a' : 'inherit' }}
                 >
-                  Saved
+                  <Bookmark size={18} style={{ opacity: 0.8 }} />
+                  <span>Saved</span>
                 </span>
-                <span 
-                  onClick={() => setIsSearchExpanded(true)} 
+                <span
+                  onClick={() => setIsSearchExpanded(true)}
                   style={{ cursor: 'pointer', display: 'grid', gridAutoFlow: 'column', alignItems: 'center', gap: '0.4rem' }}
                 >
                   <Search size={18} style={{ opacity: 0.8 }} />
@@ -505,7 +516,7 @@ function App() {
                 {[
                   { label: 'Department', val: selectedJob.department, icon: Building },
                   { label: 'Location', val: selectedJob.location, icon: MapPin },
-                  { label: 'Salary', val: currentJobDetails?.salary, icon: DollarSign },
+                  { label: 'Salary', val: formatSalary(currentJobDetails?.salary ?? null), icon: DollarSign },
                   { label: 'Work Mode', val: currentJobDetails?.mode, icon: Globe },
                   { label: 'Vacancies', val: currentJobDetails?.vacancies, icon: Users },
                   { label: 'Req ID', val: currentJobDetails?.reqId, icon: Info },
@@ -513,7 +524,7 @@ function App() {
                 ].filter(i => i.val).map(item => (
                   <div key={item.label}>
                     <div style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.15rem' }}>{item.label}</div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', color: item.highlight ? '#9a3412' : '#1e293b' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', color: item.highlight ? '#9a3412' : '#1e293b', overflowWrap: 'break-word', wordBreak: 'break-word' }}>
                       {item.val}
                     </div>
                   </div>
@@ -524,16 +535,23 @@ function App() {
             {/* Main Content */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div style={{ backgroundColor: 'white', padding: '0', borderRadius: '0' }}>
-                <div style={{ color: '#2563eb', fontSize: '0.8125rem', fontWeight: 700, marginBottom: '0.5rem' }}>{selectedJob.source}</div>
+                <div
+                  onClick={() => handleNavigate('companies', selectedJob.source)}
+                  style={{ color: '#2563eb', fontSize: '0.8125rem', fontWeight: 700, marginBottom: '0.5rem', cursor: 'pointer' }}
+                >
+                  {selectedJob.source}
+                </div>
                 <h1 style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0 0 2rem 0', letterSpacing: '-0.04em', lineHeight: 1.1 }}>{selectedJob.job_title}</h1>
 
-                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '2rem' }}>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.025em' }}>Full Description</div>
-                  <div 
-                    style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#64748b' }}
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedJob.description) }}
-                  />
-                </div>
+                <a
+                  href={selectedJob.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#0f172a', color: 'white', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 700, fontSize: '0.875rem', textDecoration: 'none' }}
+                >
+                  <ExternalLink size={15} />
+                  View Full Posting
+                </a>
               </div>
             </div>
           </div>
