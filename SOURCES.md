@@ -2,7 +2,7 @@
 
 This document tracks all active portals monitored by the Navigator Feeds scraper. Current focus is **Toronto-specific** sources.
 
-## ✅ Active (Toronto Core)
+## Active (Toronto Core)
 | Source | Portal Type | URL |
 | :--- | :--- | :--- |
 | **City of Toronto** | SuccessFactors | [Jobs at City](https://jobs.toronto.ca/jobsatcity/) |
@@ -11,24 +11,42 @@ This document tracks all active portals monitored by the Navigator Feeds scraper
 | **Metrolinx** | Oracle Cloud | [Careers](https://ehtc.fa.ca2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/jobs) |
 | **Waterfront Toronto** | Custom | [Opportunities](https://www.waterfrontoronto.ca/opportunities/join-our-team) |
 
----
-
-## 🔮 Planned / Expansion (GTHA & Regional)
-| Source | Portal Type | Status |
+## Active (Crown Corps & Conservation)
+| Source | Portal Type | URL |
 | :--- | :--- | :--- |
-| **Province of Ontario** | Custom (OPS) | Engine Ready |
-| **Government of Canada** | Custom (PSC) | Engine Ready |
-| **York Region** | HRSmart | Engine Ready |
-| **Peel Region** | iCIMS | Engine Ready |
-| **Halton Region** | SuccessFactors | Engine Ready |
-| **City of Mississauga** | SuccessFactors | Engine Ready |
-| **City of Brampton** | Workday | Engine Ready |
-| **City of Vaughan** | Njoyn | Engine Ready |
-| **Partnership Job Board** | Custom (WP) | Engine Ready |
-| **Durham Region** | SuccessFactors | TBD |
-| **City of Hamilton** | TBD | TBD |
+| **CMHC** | Jobs2Web | [Careers](https://careers.cmhc-schl.gc.ca/search/) |
+| **TRCA** | Dayforce HCM | [Candidate Portal](https://jobs.dayforcehcm.com/trca/CANDIDATEPORTAL) |
+| **Infrastructure Ontario** | Dayforce HCM | [Candidate Portal](https://jobs.dayforcehcm.com/en-US/infrastructureontario/CANDIDATEPORTAL) |
+| **CreateTO** | BambooHR (via static page) | [Careers](https://createto.ca/about-us/careers) |
 
 ---
 
-## 🛠️ Parser Engine
+## Active (Federal)
+| Source | Portal Type | URL |
+| :--- | :--- | :--- |
+| **Government of Canada** | Custom (PSC/GC Jobs) | [GC Jobs](https://emploisfp-psjobs.cfp-psc.gc.ca/psrs-srfp/applicant/page2440?fromMenu=true&toggleLanguage=en) |
+
+> Covers all public-facing federal departments incl. **Transport Canada**, **Statistics Canada**, Infrastructure Canada, CMHC (duplicate — own engine takes priority), and others.
+
+## Active (GTHA & Regional)
+| Source | Portal Type | URL |
+| :--- | :--- | :--- |
+| **City of Oshawa** | Njoyn | [Job Listing](https://cityofoshawa.njoyn.com/CL/xweb/Xweb.asp?tbtoken=ZlxYRhoXCBtxZi4lLkAuJF4DNyQmCFQ9dmxEcFFZe0ggUikFE2BcKkocUDcTdmUELiUuQC4kXgkbVRdUT3NsF3U%3D&chk=ZVpaShM%3D&page=joblisting&CLID=126638) |
+| **Town of Ajax** | Workday | [Careers](https://ajax.wd10.myworkdayjobs.com/Ajax) |
+| **City of Barrie** | Custom | [Search](https://careers.barrie.ca/search/) |
+| **Town of Caledon** | UltiPro (UKG) | [Job Board](https://recruiting.ultipro.ca/COR5003CALED/JobBoard/55e2803a-385b-47b1-b911-51dd7ed81d1e/?q=&o=postedDateDesc) |
+| **City of Niagara Falls** | Workday | [Careers](https://niagarafalls.wd10.myworkdayjobs.com/CNF) |
+| **City of London** | Jobs2Web | [Careers](https://careers.london.ca/search/) |
+| **City of Kitchener** | Jobs2Web | [Search](https://jobs.kitchener.ca/search/) |
+| **City of Waterloo** | TalentPoolBuilder | [Job Board](https://cityofwaterloo.talentpoolbuilder.com/) |
+| **City of Cambridge** | Custom (CMS → SuccessFactors) | [Current Opportunities](https://www.cambridge.ca/mayor-city-council-government/careers-volunteering/current-opportunities/) |
+| **Conservation Halton** | WordPress accordion | [Employment](https://www.conservationhalton.ca/about-us/employment/) |
+| **Municipality of Clarington** | ADP WorkforceNow | [Careers](https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=09ed440f-e109-4f6f-ac03-075ea0a3a5e5&ccId=19000101_000001&lang=en_CA) |
+
+## Planned / Expansion
+See `PENDING.md` for sources not yet active, with notes on status and blockers.
+
+---
+
+## Parser Engine
 All active sources utilize the **DeepSeek V4-Flash** AI parser for structured data extraction and description normalization.

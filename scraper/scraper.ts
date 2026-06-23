@@ -544,6 +544,420 @@ export async function scrapeWaterfront(db: Client, context: BrowserContext) {
   }
 }
 
+async function scrapeUltiPro(db: Client, context: BrowserContext, portalUrl: string, sourceName: string) {
+  console.log(`Scraping ${sourceName} (UltiPro)...`);
+  const baseUrl = new URL(portalUrl).origin;
+  const page = await context.newPage();
+  try {
+    await page.goto(portalUrl, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(5000);
+    await page.waitForSelector('a[href*="OpportunityDetail"]', { timeout: 15000 }).catch(() => {});
+
+    // Click "Load more" until exhausted
+    let loadMore = true;
+    while (loadMore) {
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(2000);
+      const moreBtn = await page.$('button:has-text("Load more"), button:has-text("Show more")');
+      if (moreBtn && await moreBtn.isVisible()) {
+        await moreBtn.click();
+        await page.waitForTimeout(4000);
+      } else {
+        loadMore = false;
+      }
+    }
+
+    const summaries = await page.evaluate((baseUrl) => {
+      return Array.from(document.querySelectorAll('a[href*="OpportunityDetail"]'))
+        .map(l => {
+          const href = (l as HTMLAnchorElement).getAttribute('href') || '';
+          return {
+            title: l.textContent?.trim() || '',
+            url: href.startsWith('http') ? href : baseUrl + href,
+          };
+        })
+        .filter(j => j.title && j.url);
+    }, baseUrl);
+
+    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
+    for (const job of summaries) {
+      const id = new URL(job.url).searchParams.get('opportunityId') || urlId(job.url);
+      await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
+    }
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeBarrie(db: Client, context: BrowserContext) {
+  const sourceName = 'City of Barrie';
+  const baseUrl = 'https://careers.barrie.ca';
+  console.log(`Scraping ${sourceName}...`);
+  const page = await context.newPage();
+  try {
+    await page.goto(`${baseUrl}/search/`, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(5000);
+
+    let pageNum = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      console.log(`[${sourceName}] Page ${pageNum}...`);
+      await page.waitForSelector('a[href*="/careers/"]', { timeout: 15000 }).catch(() => {});
+
+      const summaries = await page.evaluate((baseUrl) => {
+        const seen = new Set<string>();
+        return Array.from(document.querySelectorAll('a[href*="/careers/"]'))
+          .map(l => {
+            const href = (l as HTMLAnchorElement).getAttribute('href') || '';
+            const url = href.startsWith('http') ? href : baseUrl + href;
+            const title = l.textContent?.trim() || '';
+            return { title, url };
+          })
+          .filter(j => {
+            if (!j.title || j.title === 'Apply Now' || !j.url || seen.has(j.url)) return false;
+            seen.add(j.url);
+            return /\/careers\/.+-CA-\d+-en/.test(j.url);
+          });
+      }, baseUrl);
+
+      let count = 0;
+      for (const job of summaries) {
+        count++;
+        const idMatch = job.url.match(/CA-(\d+)-en/);
+        const id = idMatch ? idMatch[1] : urlId(job.url);
+        process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
+        await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
+      }
+      console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
+
+      const nextBtn = await page.$('button:has-text("View next page"):not([disabled])');
+      if (nextBtn && await nextBtn.isVisible()) {
+        await nextBtn.click();
+        await page.waitForTimeout(5000);
+        pageNum++;
+        if (pageNum > 20) break;
+      } else {
+        hasNextPage = false;
+      }
+    }
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeTalentPoolBuilder(db: Client, context: BrowserContext, portalUrl: string, sourceName: string) {
+  console.log(`Scraping ${sourceName} (TalentPoolBuilder)...`);
+  const page = await context.newPage();
+  try {
+    await page.goto(portalUrl, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(5000);
+
+    const host = new URL(portalUrl).hostname;
+    const summaries = await page.evaluate((host) => {
+      return Array.from(document.querySelectorAll(`li a[href*="${host}"]`))
+        .map(l => {
+          const href = (l as HTMLAnchorElement).href;
+          const title = l.firstChild?.textContent?.trim() || l.textContent?.trim() || '';
+          return { title, url: href };
+        })
+        .filter(j => j.title && j.url && /\/\d+\//.test(j.url));
+    }, host);
+
+    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
+    for (const job of summaries) {
+      const parts = new URL(job.url).pathname.split('/').filter(Boolean);
+      const id = parts[parts.length - 1] || urlId(job.url);
+      await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
+    }
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeCambridge(db: Client, context: BrowserContext) {
+  const sourceName = 'City of Cambridge';
+  console.log(`Scraping ${sourceName}...`);
+  const page = await context.newPage();
+  try {
+    await page.goto('https://www.cambridge.ca/mayor-city-council-government/careers-volunteering/current-opportunities/', { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(3000);
+
+    const summaries = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('table a[href*="sapsf.com/sfcareer/jobreqcareer"]'))
+        .map(l => ({
+          title: l.textContent?.trim() || '',
+          url: (l as HTMLAnchorElement).href,
+        }))
+        .filter(j => j.title && j.url);
+    });
+
+    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
+    for (const job of summaries) {
+      const id = new URL(job.url).searchParams.get('jobId') || urlId(job.url);
+      await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
+    }
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeConservationHalton(db: Client, context: BrowserContext) {
+  const sourceName = 'Conservation Halton';
+  const pageUrl = 'https://www.conservationhalton.ca/about-us/employment/';
+  console.log(`Scraping ${sourceName}...`);
+  const page = await context.newPage();
+  try {
+    await page.goto(pageUrl, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(3000);
+
+    const jobTitles = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('h2 button'))
+        .map(btn => btn.textContent?.trim() || '')
+        .filter(t => t.length > 3)
+    );
+
+    console.log(`[${sourceName}] Found ${jobTitles.length} jobs`);
+    for (const title of jobTitles) {
+      const btn = await page.$(`h2 button:has-text("${title.substring(0, 40)}")`);
+      if (!btn) continue;
+
+      await btn.click();
+      await page.waitForTimeout(2000);
+
+      const rawText = await page.evaluate((title) => {
+        const buttons = Array.from(document.querySelectorAll('h2 button'));
+        const btn = buttons.find(b => b.textContent?.trim().startsWith(title.substring(0, 20)));
+        const h2 = btn?.closest('h2');
+        const panel = h2?.nextElementSibling;
+        if (!panel) return '';
+        return `${title}\n\n${panel.textContent?.trim() || ''}`;
+      }, title);
+
+      if (rawText.length > 50) {
+        const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40);
+        const url = `${pageUrl}#${slug}`;
+        await saveRawJob(db, { id: urlId(url), url, source: sourceName, raw_text: rawText });
+        process.stdout.write(' ✅');
+      }
+    }
+    console.log(`\n[${sourceName}] Done.`);
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeADP(db: Client, context: BrowserContext, portalUrl: string, sourceName: string) {
+  console.log(`Scraping ${sourceName} (ADP)...`);
+  const page = await context.newPage();
+  try {
+    const loadPortal = async () => {
+      await page.goto(portalUrl, { waitUntil: 'networkidle', timeout: 60000 });
+      await page.waitForTimeout(5000);
+    };
+
+    await loadPortal();
+
+    // Count jobs from heading "Current Openings (N of N)"
+    const count = await page.evaluate(() => {
+      const heading = document.querySelector('h1');
+      const match = heading?.textContent?.match(/\((\d+) of \d+\)/);
+      return match ? parseInt(match[1]) : 0;
+    });
+
+    console.log(`[${sourceName}] Found ${count} jobs`);
+
+    for (let i = 0; i < count; i++) {
+      process.stdout.write(`\r[${sourceName}] ${i + 1}/${count}`);
+
+      // Get the i-th job link (excluding nav links which have img siblings)
+      const clicked = await page.evaluate((idx) => {
+        const candidates = Array.from(document.querySelectorAll('a[href="#"]'))
+          .filter(a => !a.querySelector('img') && (a.textContent?.trim().length || 0) > 3);
+        const link = candidates[idx] as HTMLElement;
+        if (!link) return false;
+        link.click();
+        return true;
+      }, i);
+
+      if (!clicked) continue;
+
+      await page.waitForTimeout(5000);
+
+      const rawText = await page.evaluate(() => {
+        const clone = document.body.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll('script, style, nav, footer').forEach(e => e.remove());
+        return clone.innerText?.trim() || '';
+      });
+
+      const title = await page.evaluate(() => document.querySelector('h1, h2')?.textContent?.trim() || '');
+
+      if (rawText.length > 100) {
+        const id = urlId(portalUrl + i);
+        await saveRawJob(db, { id, url: portalUrl, source: sourceName, raw_text: `${title}\n\n${rawText}` });
+      }
+
+      await loadPortal();
+    }
+    console.log(`\n[${sourceName}] Done.`);
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeCreateTO(db: Client, context: BrowserContext) {
+  const sourceName = 'CreateTO';
+  console.log(`Scraping ${sourceName}...`);
+  const page = await context.newPage();
+  try {
+    await page.goto('https://createto.ca/about-us/careers', { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(3000);
+
+    const summaries = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('a[href*="bamboohr.com/careers/"]'))
+        .map(l => ({
+          title: l.textContent?.trim() || '',
+          url: (l as HTMLAnchorElement).href,
+        }))
+        .filter(j => j.title && j.url && /\/careers\/\d+/.test(j.url));
+    });
+
+    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
+    for (const job of summaries) {
+      const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
+      await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
+    }
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeJobs2Web(db: Client, context: BrowserContext, portalUrl: string, sourceName: string) {
+  const baseUrl = new URL(portalUrl).origin;
+  console.log(`Scraping ${sourceName} (Jobs2Web)...`);
+  const page = await context.newPage();
+  try {
+    let startRow = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const url = `${baseUrl}/search/?q=&sortColumn=referencedate&sortDirection=desc&startrow=${startRow}`;
+      console.log(`[${sourceName}] startrow=${startRow}...`);
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+      await page.waitForTimeout(3000);
+      await page.waitForSelector('table a[href*="/job/"]', { timeout: 15000 }).catch(() => {});
+
+      const summaries = await page.evaluate((baseUrl) => {
+        return Array.from(document.querySelectorAll('table a[href*="/job/"]'))
+          .map(l => {
+            const href = (l as HTMLAnchorElement).getAttribute('href') || '';
+            return {
+              title: l.textContent?.trim() || '',
+              url: href.startsWith('http') ? href : baseUrl + href,
+            };
+          })
+          .filter(j => j.title && j.url);
+      }, baseUrl);
+
+      if (summaries.length === 0) { hasMore = false; break; }
+
+      let count = 0;
+      for (const job of summaries) {
+        count++;
+        const id = new URL(job.url).pathname.split('/').filter(Boolean).pop() || urlId(job.url);
+        process.stdout.write(`\r[${sourceName}] ${startRow + count}/?`);
+        await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
+      }
+      console.log(`\n[${sourceName}] Got ${summaries.length} jobs at startrow=${startRow}.`);
+
+      const nextLink = await page.$(`a[href*="startrow=${startRow + 25}"]`);
+      if (nextLink) {
+        startRow += 25;
+        if (startRow > 500) break;
+      } else {
+        hasMore = false;
+      }
+    }
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeDayforce(db: Client, context: BrowserContext, portalUrl: string, sourceName: string) {
+  console.log(`Scraping ${sourceName} (Dayforce)...`);
+  const page = await context.newPage();
+  try {
+    await page.goto(portalUrl, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(5000);
+
+    // Dismiss cookie banner
+    const dismissBtn = await page.$('button:has-text("Reject"), button:has-text("Accept")');
+    if (dismissBtn && await dismissBtn.isVisible()) {
+      await dismissBtn.click();
+      await page.waitForTimeout(1000);
+    }
+
+    let pageNum = 1;
+    let hasNextPage = true;
+    while (hasNextPage) {
+      console.log(`[${sourceName}] Page ${pageNum}...`);
+      await page.waitForSelector('a[href*="/jobs/"]', { timeout: 15000 }).catch(() => {});
+
+      const summaries = await page.evaluate(() => {
+        return Array.from(document.querySelectorAll('a[href*="/jobs/"]'))
+          .filter(l => /\/jobs\/\d+/.test((l as HTMLAnchorElement).href))
+          .map(l => ({
+            title: (l.querySelector('h2') || l).textContent?.trim() || '',
+            url: (l as HTMLAnchorElement).href,
+          }))
+          .filter(j => j.title && j.url);
+      });
+
+      let count = 0;
+      for (const job of summaries) {
+        count++;
+        const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
+        process.stdout.write(`\r[${sourceName}] ${count}/${summaries.length}`);
+        await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
+      }
+      console.log(`\n[${sourceName}] Finished page ${pageNum}.`);
+
+      // Read page counter from pagination list aria-label ("Page X of Y")
+      const paginationLabel = await page.$eval('ul[aria-label*="Page"]', el => el.getAttribute('aria-label') || '').catch(() => '');
+      const match = paginationLabel.match(/Page (\d+) of (\d+)/);
+      if (match && parseInt(match[1]) < parseInt(match[2])) {
+        const nextEl = await page.$('[aria-label="Go to next page"]');
+        if (nextEl && await nextEl.isVisible()) {
+          await nextEl.click();
+          await page.waitForTimeout(5000);
+          pageNum++;
+          if (pageNum > 20) break;
+          continue;
+        }
+      }
+      hasNextPage = false;
+    }
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
 async function main() {
   const runStartedAt = new Date().toISOString();
   const headless = !process.env.DISPLAY && process.env.CI !== 'false';
@@ -563,9 +977,28 @@ async function main() {
   // TPL (Njoyn) blocked by Radware bot protection — cannot scrape headlessly
   await scrapeWaterfront(db, context);
 
-  /* 
-  // Future Expansion (Non-Toronto specific)
+  // 3. Crown Corps & Conservation
+  await scrapeJobs2Web(db, context, 'https://careers.cmhc-schl.gc.ca/search/', 'CMHC');
+  await scrapeDayforce(db, context, 'https://jobs.dayforcehcm.com/trca/CANDIDATEPORTAL', 'TRCA');
+  await scrapeDayforce(db, context, 'https://jobs.dayforcehcm.com/en-US/infrastructureontario/CANDIDATEPORTAL', 'Infrastructure Ontario');
+  await scrapeCreateTO(db, context);
+  await scrapeBarrie(db, context);
+  await scrapeNjoyn(db, context, 'https://cityofoshawa.njoyn.com/CL/xweb/Xweb.asp?tbtoken=ZlxYRhoXCBtxZi4lLkAuJF4DNyQmCFQ9dmxEcFFZe0ggUikFE2BcKkocUDcTdmUELiUuQC4kXgkbVRdUT3NsF3U%3D&chk=ZVpaShM%3D&page=joblisting&CLID=126638', 'City of Oshawa');
+  await scrapeWorkday(db, context, 'https://ajax.wd10.myworkdayjobs.com/Ajax', 'Town of Ajax');
+  await scrapeUltiPro(db, context, 'https://recruiting.ultipro.ca/COR5003CALED/JobBoard/55e2803a-385b-47b1-b911-51dd7ed81d1e/?q=&o=postedDateDesc', 'Town of Caledon');
+  await scrapeWorkday(db, context, 'https://niagarafalls.wd10.myworkdayjobs.com/CNF', 'City of Niagara Falls');
+  await scrapeJobs2Web(db, context, 'https://careers.london.ca/search/', 'City of London');
+  await scrapeJobs2Web(db, context, 'https://jobs.kitchener.ca/search/', 'City of Kitchener');
+  await scrapeTalentPoolBuilder(db, context, 'https://cityofwaterloo.talentpoolbuilder.com/', 'City of Waterloo');
+  await scrapeCambridge(db, context);
+  await scrapeConservationHalton(db, context);
+  await scrapeADP(db, context, 'https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=09ed440f-e109-4f6f-ac03-075ea0a3a5e5&ccId=19000101_000001&lang=en_CA', 'Municipality of Clarington');
+
+  // 4. Federal
   await scrapeGC(db, context);
+
+  /*
+  // Future Expansion (Non-Toronto specific)
   await scrapeOPS(db, context);
   await scrapeHRSmart(db, context, 'https://york.hua.hrsmart.com/hr/ats/JobSearch/viewAll', 'York Region');
   await scrapeICIMS(db, context, 'https://careers-peelregion.icims.com/jobs/search?ss=1', 'Peel Region');

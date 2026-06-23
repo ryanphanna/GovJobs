@@ -4,33 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-## [Unreleased]
+## [1.3.0] - 2026-06-23
 
 ### Fixed
 - Fixed Vercel deployment failing with `vite: command not found` — root `.gitignore` had `*.json` blocking `vercel.json`; added `vercel.json` with `installCommand: npm install --include=dev` so Vercel keeps devDependencies during build.
 
 ### Added
-- CMHC scraper engine (`scrapeCMHC`) — Jobs2Web/SF-branded portal, URL-based pagination via `startrow=N`, no button interaction required.
-- TRCA scraper engine (`scrapeDayforce`) — Dayforce HCM portal, JS-driven pagination via `aria-label="Go to next page"` click; reusable for other Dayforce orgs.
-- Infrastructure Ontario added as second Dayforce source — no new engine code required.
-- Government of Canada (GC Jobs / PSC) activated — scrapes all public-facing federal postings, covers Transport Canada, Statistics Canada, and other federal departments.
-- `scrapeCMHC` refactored into generic `scrapeJobs2Web(portalUrl, sourceName)` — reusable for any Jobs2Web-branded portal.
-- City of Barrie scraper (`scrapeBarrie`) — custom portal, click-based pagination, deduplicates title vs "Apply Now" links, ID from CA-[number] slug.
-- `scrapeUltiPro(portalUrl, sourceName)` engine added — UKG Pro Recruiting, load-more pagination, ID from `opportunityId` GUID.
-- City of Oshawa added via existing Njoyn engine.
-- Town of Ajax, City of Niagara Falls added via existing Workday engine.
-- Town of Caledon added via new UltiPro engine.
-- City of London, City of Kitchener added via Jobs2Web engine.
-- `scrapeTalentPoolBuilder(portalUrl, sourceName)` engine added — JS-rendered list portal, ID from numeric path segment.
-- City of Waterloo added via TalentPoolBuilder engine.
-- City of Cambridge added via `scrapeCambridge` — static CMS table scrape, links out to SuccessFactors job pages.
-- `scrapeConservationHalton` — WordPress accordion portal; clicks each job heading to expand, scrapes panel text, saves with synthesized URL fragment as ID.
-- `scrapeADP` — ADP WorkforceNow SPA; counts jobs from heading, click-per-card with full portal reload between each, extracts page text. Reusable for other ADP orgs.
-- Conservation Halton and Municipality of Clarington now active; PENDING.md "Needs a new engine" section cleared.
-- PENDING.md created to track complex/blocked sources.
-- SOURCES.md Planned section replaced with pointer to PENDING.md.
-- CreateTO scraper (`scrapeCreateTO`) — static BambooHR-backed page; scrapes `createto.ca/about-us/careers` and follows `bamboohr.com/careers/[ID]` links.
-- All three sources added to SOURCES.md under new "Crown Corps & Conservation" section.
+- 16 new sources across crown corps, conservation authorities, federal, and GTHA regional portals.
+- 8 new generic scraper engines: `scrapeJobs2Web`, `scrapeDayforce`, `scrapeUltiPro`, `scrapeTalentPoolBuilder`, `scrapeADP`, `scrapeBarrie`, `scrapeConservationHalton`, `scrapeCambridge`.
+- Government of Canada (GC Jobs / PSC) activated — covers all public-facing federal departments including Transport Canada and Statistics Canada.
 
 ## [1.2.0] - 2026-06-23
 
