@@ -4,24 +4,30 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [1.2.0] - 2026-06-23
+
+### Added
+- Job detail sidebar now reads structured DB fields directly (`work_model`, `employment_type`, `duration`, `union_name`, `benefits`) instead of regex-parsing description text — fields actually populate now.
+- Job detail body renders AI-cleaned description as formatted HTML (headings, bold, bullet lists) instead of raw markdown.
+- Company name in job detail is clickable — navigates to Companies view filtered by that source.
+- Salary displayed in `$116K – $161K / yr` format using structured `salary_min`/`salary_max`/`salary_period` DB fields.
+- "See more →" under both home sections: Recent → sorted newest-first; Closing Soon → closing-soon filter active, soonest on top.
+- "View Full Posting" button links to original job URL.
+
+### Fixed
+- Fixed nav bar vertical alignment — all items now center-aligned.
+- Fixed sidebar text overflow — long department/location names wrap instead of being cut off.
+- Fixed Saved nav item missing icon to match Search.
+
 ## [1.1.0] - 2026-06-22
 
 ### Added
 - Deployed web frontend to Vercel with Vercel Functions serving `/api/jobs` and `/api/jobs/[id]/toggle-save` backed by Turso.
 - Added Vercel Analytics.
-- Company name in job detail view is now clickable — navigates to Companies view filtered by that source.
-- Salary now displayed in `$88K – $110K / yr` format instead of raw decimal strings.
-- Added "View Full Posting" button linking to original job URL; removed raw description display.
-- Added "See more →" under both home page sections; Recent Postings navigates to jobs sorted newest-first, Closing Soon navigates with the closing-soon filter active (soonest deadline on top).
-- Job detail body now renders AI-cleaned description as formatted HTML (headings, bold, bullet lists) instead of raw markdown text.
-- Job detail sidebar now reads structured DB fields directly (work_model, employment_type, duration, union_name, benefits) instead of regex-parsing description text — fields actually populate now.
 
 ### Fixed
-- Fixed nav bar vertical alignment — all items now center-aligned instead of baseline-aligned.
-- Fixed sidebar department/location text being cut off — long values now wrap properly.
-- Fixed Saved nav item missing icon — now matches Search with Bookmark icon for visual consistency.
-- Fixed Metrolinx (Oracle Cloud) returning 0 jobs — the `<a>` tag has no text content; title lives in a sibling element referenced by `aria-labelledby`. Selector updated to `div.job-tile` and title extraction now uses `aria-labelledby` target or nearest heading.
-- Removed Toronto Public Library (Njoyn) from active scraping — blocked by Radware bot protection at the network level (redirects to `validate.perfdrive.com`); headless Playwright cannot pass the challenge.
+- Fixed Metrolinx (Oracle Cloud) returning 0 jobs — title lives in `aria-labelledby` target, not the `<a>` tag text.
+- Removed Toronto Public Library (Njoyn) from active scraping — blocked by Radware bot protection.
 
 ## [1.0.1] - 2026-06-22
 
