@@ -1,6 +1,8 @@
+import DOMPurify from 'dompurify';
+
 export const renderMarkdown = (md: string): string => {
   if (!md) return '';
-  return md
+  const html = md
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -13,6 +15,7 @@ export const renderMarkdown = (md: string): string => {
     .replace(/\n/g, '<br>')
     .replace(/^(?!<[hup])/, '<p style="margin:0">')
     .replace(/(?<![>])$/, '</p>');
+  return DOMPurify.sanitize(html, { ADD_ATTR: ['style'] });
 };
 
 export const formatSalary = (job: { salary_min: number | null; salary_max: number | null; salary_period: string | null }): string | null => {

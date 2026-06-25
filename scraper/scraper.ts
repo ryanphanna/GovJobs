@@ -709,7 +709,7 @@ async function scrapeCambridge(db: Client, context: BrowserContext) {
   }
 }
 
-async function scrapeConservationHalton(db: Client, context: BrowserContext) {
+export async function scrapeConservationHalton(db: Client, context: BrowserContext) {
   const sourceName = 'Conservation Halton';
   const pageUrl = 'https://www.conservationhalton.ca/about-us/employment/';
   console.log(`Scraping ${sourceName}...`);
@@ -756,7 +756,7 @@ async function scrapeConservationHalton(db: Client, context: BrowserContext) {
   }
 }
 
-async function scrapeADP(db: Client, context: BrowserContext, portalUrl: string, sourceName: string) {
+export async function scrapeADP(db: Client, context: BrowserContext, portalUrl: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (ADP)...`);
   const page = await context.newPage();
   try {
