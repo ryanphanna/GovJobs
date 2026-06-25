@@ -80,26 +80,7 @@ export async function saveJob(client: Client, job: {
     )
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(id) DO UPDATE SET
-      job_title = excluded.job_title,
-      department = excluded.department,
-      location = excluded.location,
-      salary_range = excluded.salary_range,
-      description = excluded.description,
-      closing_date = excluded.closing_date,
-      url = excluded.url,
-      source = excluded.source,
       is_active = 1,
-      is_inventory = excluded.is_inventory,
-      is_student = excluded.is_student,
-      salary_min = excluded.salary_min,
-      salary_max = excluded.salary_max,
-      salary_period = excluded.salary_period,
-      work_model = excluded.work_model,
-      employment_type = excluded.employment_type,
-      duration = excluded.duration,
-      is_unionized = excluded.is_unionized,
-      union_name = excluded.union_name,
-      benefits = excluded.benefits,
       scraped_at = CURRENT_TIMESTAMP`,
     args: [
       job.id, job.job_title, job.department, job.location, job.salary_range, job.description,

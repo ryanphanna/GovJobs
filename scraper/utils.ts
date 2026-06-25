@@ -60,6 +60,12 @@ export async function handleRedirections(page: Page, depth = 0): Promise<boolean
 }
 
 export async function scrapeRawAndStage(db: Client, context: BrowserContext, job: JobSummary, sourceName: string) {
+  const existing = await db.execute({ sql: `SELECT parsed_at FROM raw_jobs WHERE id = ?`, args: [job.id!] });
+  if (existing.rows.length > 0 && existing.rows[0]!['parsed_at'] !== null) {
+    process.stdout.write(' ⏭');
+    return;
+  }
+
   const page = await context.newPage();
   try {
     await page.goto(job.url, { waitUntil: 'networkidle', timeout: 45000 });

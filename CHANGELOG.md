@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
-- Fixed re-parsing all jobs on every run — `saveRawJob` was resetting `parsed_at = NULL` on every upsert, causing DeepSeek to re-bill the full job count each scrape cycle. `parsed_at` is now left untouched on conflict.
+- Fixed re-scraping and re-parsing all jobs on every run — `scrapeRawAndStage` now skips detail page visits for jobs already in `raw_jobs` with a non-null `parsed_at`; `saveRawJob` no longer resets `parsed_at` on conflict; `saveJob` no longer overwrites AI-parsed fields on conflict (only refreshes `is_active` and `scraped_at`). Only net-new jobs now cost browser time or DeepSeek credits.
 
 ## [1.4.0] - 2026-06-25
 
