@@ -7,10 +7,10 @@ import { Search, ExternalLink, ChevronRight, X, ArrowLeft, ChevronDown, ChevronU
 
 interface Job {
   id: string;
-  job_title: string;
-  department: string;
-  location: string;
-  salary_range: string;
+  job_title: string | null;
+  department: string | null;
+  location: string | null;
+  salary_range: string | null;
   salary_min: number | null;
   salary_max: number | null;
   salary_period: string | null;
@@ -20,8 +20,8 @@ interface Job {
   is_unionized: number | null;
   union_name: string | null;
   benefits: string | null;
-  description: string;
-  closing_date: string;
+  description: string | null;
+  closing_date: string | null;
   url: string;
   source: string;
   scraped_at: string;
@@ -295,8 +295,8 @@ function App() {
     if (currentView === 'saved') { pool = jobs.filter(j => j.is_saved); }
     const filtered = pool.filter(job => {
       if (!showInventories && job.is_inventory) return false;
-      const matchesSearch = job.job_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           job.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesSearch = (job.job_title ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (job.department ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                            job.source.toLowerCase().includes(searchTerm.toLowerCase());
       const details = parseJobDetails(job);
       const matchesMode = selectedModes.length === 0 || (details.mode !== null && selectedModes.includes(details.mode));
