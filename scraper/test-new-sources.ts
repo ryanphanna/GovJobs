@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { initDb } from './db';
-import { scrapeConservationHalton, scrapeADP } from './scraper';
+import { scrapeConservationHalton } from './engines/custom';
+import { scrapeADP } from './engines/adp';
 
 const ADP_CLARINGTON = 'https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=09ed440f-e109-4f6f-ac03-075ea0a3a5e5&ccId=19000101_000001&lang=en_CA';
 
