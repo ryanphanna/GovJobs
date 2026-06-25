@@ -7,7 +7,7 @@
   "scripts": {
     "scrape": "npx tsx scraper.ts",
     "parse": "npx tsx parser.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --require tsx/cjs --test tests/*.test.ts"
   },
   "keywords": [],
   "author": "",

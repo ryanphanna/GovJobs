@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import * as dotenv from "dotenv";
+import { validateParsedJob } from "./validate";
 
 dotenv.config();
 
@@ -79,7 +80,7 @@ export async function parseJobWithAI(description: string): Promise<ParsedJob | n
             return null;
         }
 
-        return JSON.parse(content) as ParsedJob;
+        return validateParsedJob(JSON.parse(content));
     } catch (error: any) {
         console.error(`AI parsing error (${AI_MODEL}):`, error.message);
         return null;

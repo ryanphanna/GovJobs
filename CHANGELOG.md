@@ -5,9 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.4.0] - 2026-06-25
 
 ### Fixed
+- Fixed AI parser blindly trusting model output — `JSON.parse(content) as ParsedJob` replaced with `validateParsedJob()` which normalizes enums, coerces types, and returns null on bad output. Added `scraper/validate.ts` and 22 unit tests in `scraper/tests/validate.test.ts` (`npm test`).
 - Fixed toggle-save always returning 400 — handler was reading `?id=` query param but the client posts to `/api/jobs/{id}/toggle-save`; now extracts `id` from the URL path.
 - Wired up DOMPurify to sanitize `renderMarkdown` output before it is injected via `dangerouslySetInnerHTML`.
 
