@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { createClient } from '@libsql/client';
+import { createDb } from '../../_db';
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   if (req.method !== 'POST') {
@@ -8,18 +8,16 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return;
   }
 
-  const url = new URL(req.url!, `http://${req.headers.host}`);
-  const id = url.searchParams.get('id');
+  const parsed = new URL(req.url!, `http://${req.headers.host}`);
+  const pathMatch = parsed.pathname.match(/\/api\/jobs\/([^/]+)\/toggle-save/);
+  const id = pathMatch?.[1] ?? parsed.searchParams.get('id');
   if (!id) {
     res.writeHead(400);
     res.end('Missing id');
     return;
   }
 
-  const db = createClient({
-    url: process.env.TURSO_URL!,
-    authToken: process.env.TURSO_AUTH_TOKEN!,
-  });
+  const db = createDb();
 
   await db.execute({ sql: 'UPDATE jobs SET is_saved = 1 - is_saved WHERE id = ?', args: [id] });
   const result = await db.execute({ sql: 'SELECT is_saved FROM jobs WHERE id = ?', args: [id] });
