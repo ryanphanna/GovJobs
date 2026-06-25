@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.5.0] - 2026-06-25
+
+### Changed
+- Split `jobs` table into `jobs` (scraper-owned: id, url, source, is_active, is_saved, scraped_at) and `job_details` (AI-owned: all parsed fields). The scraper can no longer overwrite AI data by design. Added `scraper/migrate.ts` to migrate live data. Web API query updated to LEFT JOIN both tables.
 
 ### Fixed
 - Fixed re-scraping and re-parsing all jobs on every run — `scrapeRawAndStage` now skips detail page visits for jobs already in `raw_jobs` with a non-null `parsed_at`; `saveRawJob` no longer resets `parsed_at` on conflict; `saveJob` no longer overwrites AI-parsed fields on conflict (only refreshes `is_active` and `scraped_at`). Only net-new jobs now cost browser time or DeepSeek credits.

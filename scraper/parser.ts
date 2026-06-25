@@ -1,4 +1,4 @@
-import { initDb, getUnparsedJobs, saveJob, markJobParsed, cleanupExpiredJobs } from './db';
+import { initDb, getUnparsedJobs, saveJob, saveJobDetails, markJobParsed, cleanupExpiredJobs } from './db';
 import { parseJobWithAI } from './ai_parser';
 
 const CONCURRENCY = 5;
@@ -20,7 +20,8 @@ async function main() {
     await Promise.all(batch.map(async (raw) => {
       const aiResult = await parseJobWithAI(raw.raw_text);
       if (aiResult) {
-        await saveJob(db, {
+        await saveJob(db, { id: raw.id, url: raw.url, source: raw.source });
+        await saveJobDetails(db, {
           id: raw.id,
           job_title: aiResult.job_title,
           department: aiResult.department,
@@ -30,8 +31,6 @@ async function main() {
             : '',
           description: aiResult.clean_description,
           closing_date: aiResult.closing_date || '',
-          url: raw.url,
-          source: raw.source,
           is_inventory: aiResult.is_inventory ? 1 : 0,
           is_student: aiResult.is_student ? 1 : 0,
           salary_min: aiResult.salary_min,
@@ -53,7 +52,6 @@ async function main() {
     }));
   }
 
-  // Expire jobs that weren't in the current scrape run
   const runMetaResult = await db.execute(
     `SELECT MIN(scraped_at) as started_at FROM raw_jobs WHERE scraped_at > datetime('now', '-12 hours')`
   );
