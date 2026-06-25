@@ -410,30 +410,6 @@ async function scrapeNjoyn(db: Client, context: BrowserContext, url: string, sou
   }
 }
 
-async function scrapePJB(db: Client, context: BrowserContext) {
-  const sourceName = 'Partnership Job Board';
-  console.log(`Scraping ${sourceName}...`);
-  const page = await context.newPage();
-  try {
-    await page.goto('https://partnershipjobs.ca/postings/', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(5000);
-    const summaries = await page.evaluate(() => {
-        const links = Array.from(document.querySelectorAll('a[href*="/job/"]'));
-        return links.map(l => ({ title: l.textContent?.trim() || '', url: (l as HTMLAnchorElement).href }))
-                    .filter(j => j.title.length > 5 && j.url && !j.url.includes('/postings/'));
-    });
-
-    console.log(`[${sourceName}] Found ${summaries.length} potential jobs`);
-    for (const job of summaries) {
-      const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
-      await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
-    }
-  } catch (err: any) {
-    console.error(`Error scraping ${sourceName}: ${err.message}`);
-  } finally {
-    await page.close();
-  }
-}
 
 async function scrapeHRSmart(db: Client, context: BrowserContext, url: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (HRSmart)...`);
@@ -1007,7 +983,6 @@ async function main() {
   await scrapeSuccessFactors(db, context, 'https://jobs.mississauga.ca/search/', 'Mississauga', 'https://jobs.mississauga.ca');
   await scrapeWorkday(db, context, 'https://brampton.wd3.myworkdayjobs.com/Brampton_External_Careers', 'City of Brampton');
   await scrapeNjoyn(db, context, 'https://vaughan.njoyn.com/cl4/xweb/xweb.asp?tbtoken=ZlpRRhcXCB8GYwF0NyVccitLdGZfcVVMf0gjV1oMExdbW0UZXUcbBhdxcBEbURRTSXUuX30%3D&chk=ZVpaShM%3D&CLID=52423&page=joblisting', 'City of Vaughan');
-  // await scrapePJB(db, context); // origin of this URL unconfirmed — review before activating
 
   console.log('\nCleaning up expired jobs...');
   await cleanupExpiredJobs(db, runStartedAt);
