@@ -124,8 +124,7 @@ export async function saveRawJob(client: Client, job: {
         url = excluded.url,
         source = excluded.source,
         raw_text = excluded.raw_text,
-        scraped_at = CURRENT_TIMESTAMP,
-        parsed_at = NULL`,
+        scraped_at = CURRENT_TIMESTAMP`,
     args: [job.id, job.url, job.source, job.raw_text],
   });
 }
