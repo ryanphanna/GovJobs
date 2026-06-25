@@ -732,6 +732,84 @@ export async function scrapeConservationHalton(db: Client, context: BrowserConte
   }
 }
 
+async function scrapeDurhamRegion(db: Client, context: BrowserContext) {
+  const sourceName = 'Durham Region';
+  const baseUrl = 'https://recruitregion.durham.ca';
+  const portalUrl = `${baseUrl}/psc/recruit_rmd/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?Page=HRS_APP_SCHJOB&Action=U&FOCUS=Applicant&SiteId=3`;
+  console.log(`Scraping ${sourceName}...`);
+  const page = await context.newPage();
+  try {
+    await page.goto(portalUrl, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(2000);
+
+    await page.click('a:has-text("View All Jobs")');
+    await page.waitForTimeout(3000);
+
+    // Extract all summaries from the list (title, jobId, department, closingDate)
+    const summaries = await page.evaluate(() => {
+      const results: Array<{ title: string; jobId: string; department: string; closingDate: string }> = [];
+      const items = Array.from(document.querySelectorAll('[role="listitem"]')).filter(
+        el => getComputedStyle(el as HTMLElement).cursor === 'pointer'
+      );
+      for (const item of items) {
+        const divs = Array.from(item.querySelectorAll('div, span'));
+        const getValue = (label: string) => {
+          for (let i = 0; i < divs.length - 1; i++) {
+            if (divs[i].textContent?.trim() === label) return divs[i + 1].textContent?.trim() || '';
+          }
+          return '';
+        };
+        const title = item.firstElementChild?.textContent?.trim() || '';
+        const jobId = getValue('Job ID');
+        if (title && jobId) results.push({ title, jobId, department: getValue('Business Unit'), closingDate: getValue('Close Date') });
+      }
+      return results;
+    });
+
+    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
+    if (!summaries.length) return;
+
+    // Click first job to enter detail view
+    await page.click('[role="listitem"]');
+    await page.waitForTimeout(2000);
+
+    for (let i = 0; i < summaries.length; i++) {
+      process.stdout.write(`\r[${sourceName}] ${i + 1}/${summaries.length}`);
+      const { title, jobId, department, closingDate } = summaries[i];
+      const url = `${baseUrl}/psc/recruit_rmd/EMPLOYEE/HRMS/c/HRS_HRAM_FL.HRS_CG_SEARCH_FL.GBL?JobOpeningId=${jobId}&SiteId=3`;
+
+      const detail = await page.evaluate(() => {
+        const main = document.querySelector('main');
+        if (!main) return { location: '', employmentType: '', rawText: '' };
+        const divs = Array.from(main.querySelectorAll('div, span'));
+        const getValue = (label: string) => {
+          for (let i = 0; i < divs.length - 1; i++) {
+            if (divs[i].textContent?.trim() === label) return divs[i + 1].textContent?.trim() || '';
+          }
+          return '';
+        };
+        return { location: getValue('Location'), employmentType: getValue('Full/Part Time'), rawText: (main as HTMLElement).innerText?.trim() || '' };
+      });
+
+      const raw_text = `Title: ${title}\nDepartment: ${department}\nLocation: ${detail.location}\nClose Date: ${closingDate}\nEmployment Type: ${detail.employmentType}\n\n${detail.rawText}`;
+      await saveRawJob(db, { id: urlId(url), url, source: sourceName, raw_text });
+
+      if (i < summaries.length - 1) {
+        const nextLink = page.locator('a:has-text("Next Job")');
+        if (await nextLink.count() > 0) {
+          await nextLink.click();
+          await page.waitForTimeout(2000);
+        }
+      }
+    }
+    console.log(`\n[${sourceName}] Done.`);
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
 export async function scrapeADP(db: Client, context: BrowserContext, portalUrl: string, sourceName: string) {
   console.log(`Scraping ${sourceName} (ADP)...`);
   const page = await context.newPage();
@@ -934,6 +1012,115 @@ async function scrapeDayforce(db: Client, context: BrowserContext, portalUrl: st
   }
 }
 
+async function scrapeTaleo(db: Client, context: BrowserContext, searchUrl: string, sourceName: string) {
+  console.log(`Scraping ${sourceName} (Taleo)...`);
+  const page = await context.newPage();
+  try {
+    await page.goto(searchUrl, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(2000);
+
+    const summaries = await page.evaluate(() => {
+      return Array.from(document.querySelectorAll('h4 a[href*="viewRequisition"]')).map(link => {
+        const h4 = link.closest('h4');
+        const dept = h4?.nextElementSibling?.textContent?.trim() || '';
+        return { title: link.textContent?.trim() || '', url: (link as HTMLAnchorElement).href, department: dept };
+      });
+    });
+
+    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
+    for (const job of summaries) {
+      await scrapeRawAndStage(db, context, { id: urlId(job.url), ...job }, sourceName);
+    }
+    console.log(`\n[${sourceName}] Done.`);
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeAvanti(db: Client, context: BrowserContext, portalUrl: string, sourceName: string) {
+  const baseUrl = new URL(portalUrl).origin;
+  console.log(`Scraping ${sourceName} (Avanti)...`);
+  const page = await context.newPage();
+  try {
+    await page.goto(portalUrl, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(2000);
+
+    const summaries = await page.evaluate((base) => {
+      return Array.from(document.querySelectorAll('table tbody tr')).map(row => {
+        const link = row.querySelector('a[href*="/careers/Job/Details/"]') as HTMLAnchorElement;
+        if (!link) return null;
+        const cells = Array.from(row.querySelectorAll('td'));
+        const href = link.getAttribute('href') || '';
+        return {
+          title: link.textContent?.trim() || '',
+          url: href.startsWith('http') ? href : base + href,
+          department: cells[1]?.textContent?.trim() || '',
+          closingDate: cells[2]?.textContent?.trim() || '',
+        };
+      }).filter(Boolean);
+    }, baseUrl);
+
+    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
+    for (const job of summaries) {
+      if (!job) continue;
+      await scrapeRawAndStage(db, context, { id: urlId(job.url), title: job.title, url: job.url, department: job.department, closingDate: job.closingDate }, sourceName);
+    }
+    console.log(`\n[${sourceName}] Done.`);
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
+async function scrapeBrantford(db: Client, context: BrowserContext) {
+  const sourceName = 'City of Brantford';
+  const base = 'https://www.brantford.ca';
+  const subPages = [
+    `${base}/your-government/careers/current-opportunities/full-time-opportunities/`,
+    `${base}/your-government/careers/current-opportunities/part-time-opportunities/`,
+    `${base}/your-government/careers/current-opportunities/seasonal-opportunities/`,
+    `${base}/your-government/careers/current-opportunities/student-opportunities/`,
+  ];
+  console.log(`Scraping ${sourceName}...`);
+  const seen = new Set<string>();
+  const page = await context.newPage();
+  try {
+    for (const subUrl of subPages) {
+      await page.goto(subUrl, { waitUntil: 'networkidle', timeout: 60000 });
+      await page.waitForTimeout(2000);
+
+      const jobs = await page.evaluate((base) => {
+        return Array.from(document.querySelectorAll('table tbody tr')).map(row => {
+          const link = row.querySelector('a[href*="job-profile"]') as HTMLAnchorElement;
+          if (!link) return null;
+          const cells = Array.from(row.querySelectorAll('td'));
+          const href = link.getAttribute('href') || '';
+          return {
+            title: link.textContent?.trim() || '',
+            url: href.startsWith('http') ? href : base + href,
+            department: cells[1]?.textContent?.trim() || '',
+            closingDate: cells[2]?.textContent?.trim() || '',
+          };
+        }).filter(Boolean);
+      }, base);
+
+      for (const job of jobs) {
+        if (!job || seen.has(job.url)) continue;
+        seen.add(job.url);
+        await scrapeRawAndStage(db, context, { id: urlId(job.url), title: job.title, url: job.url, department: job.department, closingDate: job.closingDate }, sourceName);
+      }
+    }
+    console.log(`\n[${sourceName}] Done.`);
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
 async function main() {
   const runStartedAt = new Date().toISOString();
   const headless = !process.env.DISPLAY && process.env.CI !== 'false';
@@ -977,12 +1164,16 @@ async function main() {
   await scrapeOPS(db, context);
 
   // 6. GTHA Regions & Cities
+  await scrapeDurhamRegion(db, context);
   await scrapeHRSmart(db, context, 'https://york.hua.hrsmart.com/hr/ats/JobSearch/viewAll', 'York Region');
   await scrapeICIMS(db, context, 'https://careers-peelregion.icims.com/jobs/search?ss=1', 'Peel Region');
   await scrapeSuccessFactors(db, context, 'https://careers.halton.ca/search/', 'Halton Region', 'https://careers.halton.ca');
   await scrapeSuccessFactors(db, context, 'https://jobs.mississauga.ca/search/', 'Mississauga', 'https://jobs.mississauga.ca');
   await scrapeWorkday(db, context, 'https://brampton.wd3.myworkdayjobs.com/Brampton_External_Careers', 'City of Brampton');
   await scrapeNjoyn(db, context, 'https://vaughan.njoyn.com/cl4/xweb/xweb.asp?tbtoken=ZlpRRhcXCB8GYwF0NyVccitLdGZfcVVMf0gjV1oMExdbW0UZXUcbBhdxcBEbURRTSXUuX30%3D&chk=ZVpaShM%3D&CLID=52423&page=joblisting', 'City of Vaughan');
+  await scrapeTaleo(db, context, 'https://tre.tbe.taleo.net/tre01/ats/careers/v2/searchResults?org=COSC&cws=37', 'City of St. Catharines');
+  await scrapeAvanti(db, context, 'https://welland.myavanti.ca/careers', 'City of Welland');
+  await scrapeBrantford(db, context);
 
   console.log('\nCleaning up expired jobs...');
   await cleanupExpiredJobs(db, runStartedAt);

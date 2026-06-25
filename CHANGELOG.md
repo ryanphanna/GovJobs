@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Activated 7 previously-commented sources: Province of Ontario (OPS), York Region, Peel Region, Halton Region, City of Mississauga, City of Brampton, and City of Vaughan.
+- Added Durham Region scraper (PeopleSoft Fluid UI — two-phase list + Next Job traversal).
+- Added City of St. Catharines scraper (Taleo — direct `viewRequisition` URLs).
+- Added City of Welland scraper (Avanti — table with direct `/careers/Job/Details/` URLs).
+- Added City of Brantford scraper (custom CMS — crawls full-time, part-time, seasonal, and student sub-pages).
 
 ### Changed
 - Extracted `renderMarkdown`, `formatSalary`, `daysUntilClose`, `fixCasing` from `App.tsx` into `src/utils.ts`.

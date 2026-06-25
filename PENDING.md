@@ -10,5 +10,4 @@ Sources that have been identified but are not yet scraped, with notes on why.
 
 | Source | Portal Type | Notes |
 | :--- | :--- | :--- |
-| **Durham Region** | SuccessFactors | TBD — find portal URL |
 | **City of Hamilton** | TBD | Portal type unconfirmed |
