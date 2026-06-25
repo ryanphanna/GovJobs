@@ -8,6 +8,4 @@ Sources that have been identified but are not yet scraped, with notes on why.
 
 ## Engine ready, URL needed
 
-| Source | Portal Type | Notes |
-| :--- | :--- | :--- |
-| **City of Hamilton** | TBD | Portal type unconfirmed |
+*(none currently)*

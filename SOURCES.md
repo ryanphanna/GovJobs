@@ -57,6 +57,7 @@ This document tracks all active portals monitored by the Navigator Feeds scraper
 | **City of St. Catharines** | Taleo | [Careers](https://tre.tbe.taleo.net/tre01/ats/careers/v2/searchResults?org=COSC&cws=37) |
 | **City of Welland** | Avanti | [Careers](https://welland.myavanti.ca/careers) |
 | **City of Brantford** | Custom CMS | [Current Opportunities](https://www.brantford.ca/your-government/careers/current-opportunities/) |
+| **City of Hamilton** | BambooHR | [Careers](https://cityofhamilton.bamboohr.com/careers) |
 
 ## Planned / Expansion
 See `PENDING.md` for sources not yet active, with notes on status and blockers.

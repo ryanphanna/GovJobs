@@ -870,6 +870,38 @@ export async function scrapeADP(db: Client, context: BrowserContext, portalUrl: 
   }
 }
 
+async function scrapeBambooHR(db: Client, context: BrowserContext, portalUrl: string, sourceName: string) {
+  const baseUrl = new URL(portalUrl).origin;
+  console.log(`Scraping ${sourceName} (BambooHR)...`);
+  const page = await context.newPage();
+  try {
+    await page.goto(portalUrl, { waitUntil: 'networkidle', timeout: 60000 });
+    await page.waitForTimeout(3000);
+
+    const summaries = await page.evaluate((base) => {
+      return Array.from(document.querySelectorAll('a[href*="/careers/"]'))
+        .filter(l => /\/careers\/\d+/.test((l as HTMLAnchorElement).href || l.getAttribute('href') || ''))
+        .map(l => {
+          const href = (l as HTMLAnchorElement).href || l.getAttribute('href') || '';
+          const url = href.startsWith('http') ? href : base + href;
+          return { title: l.textContent?.trim() || '', url };
+        })
+        .filter(j => j.title && j.url);
+    }, baseUrl);
+
+    console.log(`[${sourceName}] Found ${summaries.length} jobs`);
+    for (const job of summaries) {
+      const id = job.url.split('/').filter(Boolean).pop() || urlId(job.url);
+      await scrapeRawAndStage(db, context, { ...job, id }, sourceName);
+    }
+    console.log(`\n[${sourceName}] Done.`);
+  } catch (err: any) {
+    console.error(`Error scraping ${sourceName}: ${err.message}`);
+  } finally {
+    await page.close();
+  }
+}
+
 async function scrapeCreateTO(db: Client, context: BrowserContext) {
   const sourceName = 'CreateTO';
   console.log(`Scraping ${sourceName}...`);
@@ -1174,6 +1206,7 @@ async function main() {
   await scrapeTaleo(db, context, 'https://tre.tbe.taleo.net/tre01/ats/careers/v2/searchResults?org=COSC&cws=37', 'City of St. Catharines');
   await scrapeAvanti(db, context, 'https://welland.myavanti.ca/careers', 'City of Welland');
   await scrapeBrantford(db, context);
+  await scrapeBambooHR(db, context, 'https://cityofhamilton.bamboohr.com/careers', 'City of Hamilton');
 
   console.log('\nCleaning up expired jobs...');
   await cleanupExpiredJobs(db, runStartedAt);
