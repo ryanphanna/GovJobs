@@ -1007,7 +1007,7 @@ async function main() {
   await scrapeSuccessFactors(db, context, 'https://jobs.mississauga.ca/search/', 'Mississauga', 'https://jobs.mississauga.ca');
   await scrapeWorkday(db, context, 'https://brampton.wd3.myworkdayjobs.com/Brampton_External_Careers', 'City of Brampton');
   await scrapeNjoyn(db, context, 'https://vaughan.njoyn.com/cl4/xweb/xweb.asp?tbtoken=ZlpRRhcXCB8GYwF0NyVccitLdGZfcVVMf0gjV1oMExdbW0UZXUcbBhdxcBEbURRTSXUuX30%3D&chk=ZVpaShM%3D&CLID=52423&page=joblisting', 'City of Vaughan');
-  await scrapePJB(db, context);
+  // await scrapePJB(db, context); // origin of this URL unconfirmed — review before activating
 
   console.log('\nCleaning up expired jobs...');
   await cleanupExpiredJobs(db, runStartedAt);

@@ -53,7 +53,6 @@ This document tracks all active portals monitored by the Navigator Feeds scraper
 | **City of Cambridge** | Custom (CMS → SuccessFactors) | [Opportunities](https://www.cambridge.ca/mayor-city-council-government/careers-volunteering/current-opportunities/) |
 | **Conservation Halton** | WordPress accordion | [Employment](https://www.conservationhalton.ca/about-us/employment/) |
 | **Municipality of Clarington** | ADP WorkforceNow | [Careers](https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=09ed440f-e109-4f6f-ac03-075ea0a3a5e5&ccId=19000101_000001&lang=en_CA) |
-| **Partnership Job Board** | Custom (WordPress) | [Postings](https://partnershipjobs.ca/postings/) |
 
 ## Planned / Expansion
 See `PENDING.md` for sources not yet active, with notes on status and blockers.
